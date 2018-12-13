@@ -44,4 +44,3 @@ int16_t AdcClass::readVal (void) {
     return -1;
   }
 }
-

@@ -20,7 +20,7 @@
 BrightnessClass Brightness;
 
 
-void BrightnessClass::initialize (uint16_t eepromAddr, uint8_t boostPin = 0) {
+void BrightnessClass::initialize (uint16_t eepromAddr, uint8_t boostPin) {
   uint8_t i;  
   assert (eepromAddr + sizeof(lut) < EEPROM.length()); 
   this->eepromAddr = eepromAddr;
@@ -127,6 +127,3 @@ uint8_t BrightnessClass::maximum (void) {
 void BrightnessClass::eepromWrite (void) {
   ::eepromWrite (eepromAddr, (uint8_t *)lut, sizeof(lut));
 }
-
-
-

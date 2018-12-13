@@ -4,15 +4,11 @@
  * Karim Hraibi - 2018
  */
 
-
 #include "Helper.h"
 #include <EEPROM.h>
 
 
 
-/***********************************
- * Write an array to EEPROM
- ***********************************/
 void eepromWrite (uint16_t addr, uint8_t *buf, uint16_t bufSize) {
   uint8_t i, v;
 
@@ -21,12 +17,8 @@ void eepromWrite (uint16_t addr, uint8_t *buf, uint16_t bufSize) {
     if ( buf[i] != v) EEPROM.write (addr + i, buf[i]);
   }
 }
-/*********/
 
 
-/***********************************
- * Read an array from EEPROM
- ***********************************/
 void eepromRead (uint16_t addr, uint8_t *buf, uint16_t bufSize) {
   uint8_t i;
 
@@ -34,12 +26,8 @@ void eepromRead (uint16_t addr, uint8_t *buf, uint16_t bufSize) {
     buf[i] = EEPROM.read (addr + i);
   }
 }
-/*********/
 
 
-/***********************************
- * Save a 32-bit word to EEPROM
- ***********************************/
 void eepromWrite32 (uint16_t addr, uint32_t val) {
   uint8_t i, v;
   uint16_t bytes[4];
@@ -53,13 +41,8 @@ void eepromWrite32 (uint16_t addr, uint32_t val) {
     if (bytes[i] != v) EEPROM.write (addr + i, bytes[i]);
   }  
 }
-/*********/
 
 
-
-/***********************************
- * Read a 32-bit word from EEPROM
- ***********************************/
 uint32_t eepromRead32 (uint16_t addr) {
   uint8_t i;
   uint16_t bytes[4];
@@ -73,24 +56,14 @@ uint32_t eepromRead32 (uint16_t addr) {
   val |= (uint32_t)bytes[3] << 24;
   return val;
 }
-/*********/
 
 
-/***********************************
- * Caluclate least significant BCD digit 
- * out of a 2-digit decimal value
- ***********************************/
 uint8_t dec2bcdLow (uint8_t value) {
   while ( value >= 10 ) value -= 10;
   return value; 
 }
-/*********/
 
 
-/***********************************
- * Caluclate most significant BCD digit 
- * out of a 2-digit decimal value
- ***********************************/
 uint8_t dec2bcdHigh (uint8_t value) {
   uint8_t rv = 0;
   while ( value >= 100) value -= 100;
@@ -100,5 +73,3 @@ uint8_t dec2bcdHigh (uint8_t value) {
   }
   return rv; 
 }
-/*********/
-

@@ -46,15 +46,15 @@ extern BuzzerClass Buzzer;
  */
 class ChronoClass {
   public:
-    void increment10th (void);
-    void increment10sec (void);
-    bool decrement10sec (void);
-    void incrementMin (void);
-    bool decrementMin (void);
-    bool decrementSec (void);
-    void reset (void);
-    void copy (ChronoClass *tm);
-    void roundup (void);
+    void increment10th (void) volatile;
+    void increment10sec (void) volatile;
+    bool decrement10sec (void) volatile;
+    void incrementMin (void) volatile;
+    bool decrementMin (void) volatile;
+    bool decrementSec (void) volatile;
+    void reset (void) volatile;
+    void copy (volatile ChronoClass *) volatile;
+    void roundup (void) volatile;
 
     volatile int8_t tenth = 0;
     volatile int8_t second = 0;
