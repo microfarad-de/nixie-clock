@@ -11,7 +11,7 @@
  *
  */
 
-#include "timer-one.h"
+#include "TimerOne.h"
 
 #define RESOLUTION 65536    // Timer1 is 16 bit
 

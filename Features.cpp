@@ -4,7 +4,7 @@
  * Karim Hraibi - 2018
  */
 
-#include "features.h"
+#include "Features.h"
 
 #define TIMER_ALARM_DURATION      (5 * 60000)
 #define ALARM_ALARM_DURATION      (30 * 60000)

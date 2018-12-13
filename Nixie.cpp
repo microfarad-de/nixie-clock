@@ -5,7 +5,7 @@
  */
 
 #include <avr/wdt.h>
-#include "nixie.h"
+#include "Nixie.h"
 
 
 #define DIGIT_PERIOD        3000

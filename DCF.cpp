@@ -5,7 +5,7 @@
  */
 
 
-#include "dcf.h"
+#include "DCF.h"
 
 /*
  * Uncomment for activating debug output over the serial port
@@ -258,3 +258,4 @@ uint8_t DcfClass::verify (void) {
   return 0;
 }
 /*********/
+

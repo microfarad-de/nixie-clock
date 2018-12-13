@@ -5,7 +5,7 @@
  */
 
 
-#include "helper.h"
+#include "Helper.h"
 #include <EEPROM.h>
 
 
@@ -101,3 +101,4 @@ uint8_t dec2bcdHigh (uint8_t value) {
   return rv; 
 }
 /*********/
+

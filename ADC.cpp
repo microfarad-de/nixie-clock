@@ -5,7 +5,7 @@
  */
 
 
-#include "adc.h"
+#include "ADC.h"
 
 
 
@@ -44,3 +44,4 @@ int16_t AdcClass::readVal (void) {
     return -1;
   }
 }
+
