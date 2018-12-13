@@ -7,7 +7,7 @@
 #ifndef __BRIGHTNESS_H
 #define __BRIGHTNESS_H
 
-#include <Arduino.h>
+#include <arduino.h>
 
 /*
  * Size in bytes of the brightness lookup table (LUT)
@@ -105,4 +105,3 @@ class BrightnessClass {
 extern BrightnessClass Brightness;
 
 #endif // __BRIGHTNESS_H
-

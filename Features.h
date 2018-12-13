@@ -8,8 +8,8 @@
 #define __FEATURES_H
 
 #include <Arduino.h>
-#include "Helper.h"
-#include "Nixie.h"
+#include "helper.h"
+#include "nixie.h"
 
 /*
  * Buzzer control class

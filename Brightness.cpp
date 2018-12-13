@@ -4,10 +4,10 @@
  * Karim Hraibi - 2018
  */
 
-#include "Brightness.h"
+#include "brightness.h"
 #include <EEPROM.h>
 #include <assert.h>
-#include "Helper.h"
+#include "helper.h"
 
 
 #define PWM_STEPS 100
@@ -127,6 +127,3 @@ uint8_t BrightnessClass::maximum (void) {
 void BrightnessClass::eepromWrite (void) {
   ::eepromWrite (eepromAddr, (uint8_t *)lut, sizeof(lut));
 }
-
-
-

@@ -35,15 +35,15 @@
 #include <avr/sleep.h>
 #include <avr/power.h>
 #include <avr/wdt.h>
-#include "TimerOne.h"
-#include "TimerTwo.h"
-#include "DCF.h"
-#include "Nixie.h"
-#include "ADC.h"
-#include "Brightness.h"
-#include "Helper.h"
-#include "Features.h"
-//#include "BuildDate.h"
+#include "timer-one.h"
+#include "timer-two.h"
+#include "dcf.h"
+#include "nixie.h"
+#include "adc.h"
+#include "brightness.h"
+#include "helper.h"
+#include "features.h"
+//#include "build-date.h"
 
 
 //#define SERIAL_DEBUG              // activate debug printing over RS232
