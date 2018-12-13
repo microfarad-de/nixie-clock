@@ -4,10 +4,10 @@
  * Karim Hraibi - 2018
  */
 
-#include "Brightness.h"
+#include "brightness.h"
 #include <EEPROM.h>
 #include <assert.h>
-#include "Helper.h"
+#include "helper.h"
 
 
 #define PWM_STEPS 100

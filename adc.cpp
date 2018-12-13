@@ -5,7 +5,7 @@
  */
 
 
-#include "ADC.h"
+#include "adc.h"
 
 
 
