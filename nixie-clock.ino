@@ -24,10 +24,9 @@
  * Date:    13.12.2018
  * 
  */
-// version information
-#define VERSION_MAJOR 1
-#define VERSION_MINOR 0
-#define VERSION_MAINT 1
+#define VERSION_MAJOR 1  // Major version
+#define VERSION_MINOR 0  // Minor version
+#define VERSION_MAINT 1  // Maintenance version
 
 
 
