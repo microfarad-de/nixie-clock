@@ -8,4 +8,4 @@ In order to build this project, please clone or download the contents of this re
 
 Debugging via the Serial port can be enabled by uncommenting the "#define SERIAL_DEBUG" macro inside "nixie-clock.ino".
 
-This firmware has been verified using an Arduino Pro Mini  compatible board based on the ATmega328P microcontroller.
+This firmware has been verified using an Arduino Pro Mini compatible board based on the ATmega328P microcontroller.
