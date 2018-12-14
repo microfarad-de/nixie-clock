@@ -10,7 +10,7 @@
 #define __ADC_H
 
 #include <Arduino.h>
-  
+
 
 /*
  * ADC prescaler values
