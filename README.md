@@ -10,4 +10,4 @@ Debugging via the Serial port can be enabled by uncommenting the "#define SERIAL
 
 This firmware has been verified using an Arduino Pro Mini compatible board based on the ATmega328P microcontroller.
 
-Please feel free to use or distribute the code or parts of it under the *GNU General Public License v3.0*.
+Unless stated otherwise inside the source file headers, please feel free to use or distribute the code or parts of it under the *GNU General Public License v3.0*.
