@@ -40,7 +40,7 @@ void TimerTwo::setPeriod(long microseconds)
   else if((cycles >>= 1) < RESOLUTION) clockSelectBits = _BV(CS22) | _BV(CS21);  // prescale by /256
   else if((cycles >>= 2) < RESOLUTION) clockSelectBits = _BV(CS22) | _BV(CS21) | _BV(CS20);  // prescale by /1024
   else        cycles = RESOLUTION - 1, clockSelectBits = _BV(CS22) | _BV(CS21) | _BV(CS20);  // request was out of bounds, set as maximum
-  OCR2A = pwmPeriod = cycles;                                                    // OCR2A is TOP in phase correct pwm mode for Timer2
+  OCR2A = cycles;                                                                // OCR2A is TOP in phase correct pwm mode for Timer2
   TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));                                // reset clock select register
   TCCR2B |= clockSelectBits;                                                     
 }

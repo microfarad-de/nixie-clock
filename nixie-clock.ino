@@ -25,7 +25,7 @@
  * 
  */
 #define VERSION_MAJOR 1  // Major version
-#define VERSION_MINOR 1  // Minor version
+#define VERSION_MINOR 2  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -965,9 +965,9 @@ void settingsMenu (void) {
   static MenuState_e nextState = SHOW_DATE_E;
   static MenuState_e returnState = SHOW_TIME_E; 
   static int8_t menuIndex = 0;
-  static const uint32_t scrollDelayDefault = 300, menuTimeoutDefault = 30*1000, menuTimeoutExtended = 180*60000, menuTimeoutNextState = 5*1000;
+  static const uint32_t scrollDelayDefault = 300, menuTimeoutDefault = 30*1000, menuTimeoutExtended = 60*60000, menuTimeoutNextState = 5*1000;
   static uint32_t timeoutTs = 0, scrollTs = 0, brightnessTs = 0, accelTs = 0, bannerTs = 0;
-  static uint32_t scrollDelay = scrollDelayDefault, menuTimeout = menuTimeoutDefault, scrollCount = 0;
+  static uint32_t scrollDelay = scrollDelayDefault, menuTimeout = menuTimeoutDefault/*, scrollCount = 0*/;
   static NixieDigits_s valueDigits;
   static int8_t sIdx = 0, vIdx = 0;
   static bool brightnessEnable = false;
@@ -1011,7 +1011,7 @@ void settingsMenu (void) {
     // button 1 or 2 - falling edge --> reset scroll speed
     else if (Button[1].fallingContinuous () || Button[2].fallingContinuous ()) {
       scrollDelay = scrollDelayDefault; 
-      scrollCount = 0; 
+      /*scrollCount = 0;*/ 
     }
   }
 
@@ -1213,24 +1213,24 @@ void settingsMenu (void) {
         nextState = SHOW_TIME_E;
         reorderMenu (menuIndex);
       }
-      // button 1 or 2 - long press --> increase/decrease seconds then minutes / arm countdown timer
+      // button 1 or 2 - long press --> increase/decrease /*seconds then*/ minutes / arm countdown timer
       else if (Button[1].longPressContinuous () || Button[2].longPressContinuous ()) {
         if (ts - scrollTs >= scrollDelay) {
           if (!CdTimer.active) Stopwatch.reset ();
-          if (scrollCount < 6) {
+          /*if (scrollCount < 6) {
             if (Button[1].pressed) CdTimer.secondIncrease ();
             else                   CdTimer.secondDecrease ();
             accelTs = ts; scrollDelay = scrollDelayDefault;
           }
-          else {
-            if (Button[1].pressed) CdTimer.minuteIncrease ();
-            else                   CdTimer.minuteDecrease ();
-          }
+          else {*/
+          if (Button[1].pressed) CdTimer.minuteIncrease ();
+          else                   CdTimer.minuteDecrease ();
+          /*}*/
           CdTimer.resetAlarm ();
           scrollTs = ts;
           nextState = SHOW_TIME_E;
           reorderMenu (menuIndex);
-          scrollCount++;
+          /*scrollCount++;*/
         }
       }
       break;

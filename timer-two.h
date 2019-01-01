@@ -22,7 +22,6 @@ class TimerTwo
   public:
   
     // properties
-    unsigned int pwmPeriod;
     unsigned char clockSelectBits;
 
     // methods
