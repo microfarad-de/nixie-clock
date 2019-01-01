@@ -20,13 +20,13 @@
  * 
  * Karim Hraibi - 2018
  * 
- * Version: 1.0.1
- * Date:    13.12.2018
+ * Version: 1.1.0
+ * Date:    01.01.2019
  * 
  */
 #define VERSION_MAJOR 1  // Major version
-#define VERSION_MINOR 0  // Minor version
-#define VERSION_MAINT 1  // Maintenance version
+#define VERSION_MINOR 1  // Minor version
+#define VERSION_MAINT 0  // Maintenance version
 
 
 
@@ -412,8 +412,8 @@ void loop() {
       Main.menuState = SHOW_BLANK_E;
       blankCondition = true;
     }
-    // re-enable blanking after switching to the service display or at the change of an hour 
-    else if (Main.menuState == SHOW_SERVICE || ( Main.menuState != SHOW_BLANK && Main.menuState != SET_HOUR  && hour != lastHour) ) {
+    // re-enable blanking after switching to the service display /*or at the change of an hour*/ 
+    else if (Main.menuState == SHOW_SERVICE /*|| ( Main.menuState != SHOW_BLANK && Main.menuState != SET_HOUR && hour != lastHour)*/ ) {
       blankCondition = false;
     }
   }
