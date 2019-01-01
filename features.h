@@ -51,6 +51,7 @@ class ChronoClass {
     bool decrement10sec (void) volatile;
     void incrementMin (void) volatile;
     bool decrementMin (void) volatile;
+    void incrementSec (void) volatile;
     bool decrementSec (void) volatile;
     void reset (void) volatile;
     void copy (volatile ChronoClass *) volatile;
@@ -139,7 +140,8 @@ enum AlarmMode_e {
 struct AlarmEeprom_s {
   int8_t hour;
   int8_t minute;
-  AlarmMode_e mode;              
+  AlarmMode_e mode;
+  AlarmMode_e lastMode;
 };
 
 /*
@@ -169,7 +171,6 @@ class AlarmClass {
   private:
     uint32_t snoozeTs = 0; 
     uint32_t alarmTs = 0;    
-    AlarmMode_e lastMode = ALARM_DAILY;
     int8_t lastMinute = 0;
     uint32_t blinkTs = 0;
     bool alarmCondition = false;

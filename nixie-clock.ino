@@ -24,8 +24,8 @@
  * Date:    01.01.2019
  * 
  */
-#define VERSION_MAJOR 1  // Major version
-#define VERSION_MINOR 2  // Minor version
+#define VERSION_MAJOR 2  // Major version
+#define VERSION_MINOR 0  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -139,8 +139,9 @@ struct Settings_t {
   uint8_t blankScreenMode2;                        // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
   uint8_t blankScreenStartHr2;                     // start hour for disabling the display (second profile)
   uint8_t blankScreenFinishHr2;                    // finish hour for disabling the display (second profile)
-  uint8_t reserved[9];                             // reserved for future use
+  uint8_t reserved[5];                             // reserved for future use
   AlarmEeprom_s alarm;                             // alarm clock settings
+  uint8_t reserved1[4];                            // reserved for future use
 } Settings;
 
 

@@ -102,6 +102,12 @@ bool ChronoClass::decrementMin (void) volatile {
   return false;
 }
 
+void ChronoClass::incrementSec (void) volatile {
+  second++;
+  if (second > 59) second = 0, minute++;
+  if (minute > 59) minute = 0, hour++;
+}
+
 bool ChronoClass::decrementSec (void) volatile {
   second--;
   if (second < 0) second = 59, minute--;
@@ -145,17 +151,22 @@ void CdTimerClass::initialize (void (*callback)(bool)) {
 void CdTimerClass::loopHandler (void) {
   uint32_t ts = millis ();
   
-  if (tickFlag) {
-    displayRefresh ();
-    if (alarm) {
-      stop ();
-      Nixie.resetBlinking ();
-      Nixie.blinkAll (true);
-      Buzzer.playMelody2 ();
-      tm.copy (&defaultTm);
-      displayRefresh ();
-      alarmTs = ts;
+  if (tickFlag) { 
+    if (!alarm) {
+      alarm = tm.decrementSec (); 
+      if (alarm) {
+        //stop ();
+        alarmTs = ts;
+        tm.copy (&defaultTm);
+        Nixie.resetBlinking ();
+        Nixie.blinkAll (true);
+        Buzzer.playMelody2 ();
+      }
     }
+    else {
+      tm.incrementSec ();
+    }
+    displayRefresh ();
     tickFlag = false;
   }
   
@@ -163,14 +174,13 @@ void CdTimerClass::loopHandler (void) {
 }
 
 void CdTimerClass::tick (void) {
-  if (running) {
-    alarm = tm.decrementSec (); 
+  if (running) {  
     tickFlag = true;
   }
 }
 
 void CdTimerClass::secondIncrease (void) {
-  //stop ();
+  stop ();
   tm.increment10sec ();
   displayRefresh ();
   start ();
@@ -178,7 +188,7 @@ void CdTimerClass::secondIncrease (void) {
 
 void CdTimerClass::secondDecrease (void) {
   bool rv;
-  //stop ();
+  stop ();
   rv = tm.decrement10sec ();
   displayRefresh ();
   if (rv) stop ();
@@ -186,7 +196,7 @@ void CdTimerClass::secondDecrease (void) {
 }
 
 void CdTimerClass::minuteIncrease (void) {
-  //stop ();
+  stop ();
   tm.incrementMin ();
   displayRefresh ();
   start ();
@@ -194,7 +204,7 @@ void CdTimerClass::minuteIncrease (void) {
 
 void CdTimerClass::minuteDecrease (void) {
   bool rv;
-  //stop ();
+  stop ();
   rv = tm.decrementMin ();
   displayRefresh ();
   if (rv) stop ();
@@ -231,6 +241,7 @@ void CdTimerClass::resetAlarm (void) {
     alarm = false;
     Nixie.blinkAll (false);
     Buzzer.stop ();
+    stop ();
   }
 }
 
@@ -254,6 +265,7 @@ void StopwatchClass::initialize (void (*callback)(bool reset)) {
 
 void StopwatchClass::loopHandler (void) {
   if (tickFlag) {
+    tm.increment10th ();
     if (!paused) displayRefresh ();
     if (tm.hour > 1) {
       tm.hour = 1; tm.minute = 59; tm.second = 59; tm.tenth = 9;
@@ -264,8 +276,7 @@ void StopwatchClass::loopHandler (void) {
 }
 
 void StopwatchClass::tick (void) {
-  if (running) {
-    tm.increment10th ();
+  if (running) {  
     tickFlag = true;
   }
 }
@@ -330,6 +341,8 @@ void AlarmClass::initialize (AlarmEeprom_s *settings) {
   if (settings->hour < 0 || settings->hour > 23) settings->hour = 0;
   if (settings->mode != ALARM_OFF && settings->mode != ALARM_WEEKENDS && 
       settings->mode != ALARM_WEEKDAYS && settings->mode != ALARM_DAILY) settings->mode = ALARM_OFF;
+  if (settings->lastMode != ALARM_OFF && settings->lastMode != ALARM_WEEKENDS && 
+      settings->lastMode != ALARM_WEEKDAYS && settings->lastMode != ALARM_DAILY) settings->lastMode = ALARM_DAILY;
   displayRefresh ();
 }
 
@@ -392,7 +405,7 @@ void AlarmClass::modeIncrease (void) {
   if      (settings->mode == ALARM_OFF)      settings->mode = ALARM_WEEKENDS;
   else if (settings->mode == ALARM_WEEKENDS) settings->mode = ALARM_WEEKDAYS;
   else if (settings->mode == ALARM_WEEKDAYS) settings->mode = ALARM_DAILY;
-  else if (settings->mode == ALARM_DAILY)    settings->mode = ALARM_OFF, lastMode = ALARM_DAILY;
+  else if (settings->mode == ALARM_DAILY)    settings->mode = ALARM_OFF, settings->lastMode = ALARM_DAILY;
   displayRefresh ();
 }
 
@@ -400,16 +413,16 @@ void AlarmClass::modeDecrease (void) {
   if      (settings->mode == ALARM_OFF)      settings->mode = ALARM_DAILY;
   else if (settings->mode == ALARM_DAILY)    settings->mode = ALARM_WEEKDAYS;
   else if (settings->mode == ALARM_WEEKDAYS) settings->mode = ALARM_WEEKENDS;
-  else if (settings->mode == ALARM_WEEKENDS) settings->mode = ALARM_OFF, lastMode = ALARM_DAILY;
+  else if (settings->mode == ALARM_WEEKENDS) settings->mode = ALARM_OFF, settings->lastMode = ALARM_DAILY;
   displayRefresh ();
 }
 
 void AlarmClass::modeToggle (void) {
   if (settings->mode == ALARM_OFF) {
-    settings->mode = lastMode;
+    settings->mode = settings->lastMode;
   }
   else {
-    lastMode = settings->mode;
+    settings->lastMode = settings->mode;
     settings->mode = ALARM_OFF;
   }
   displayRefresh ();
