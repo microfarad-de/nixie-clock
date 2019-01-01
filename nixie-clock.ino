@@ -20,7 +20,7 @@
  * 
  * Karim Hraibi - 2018
  * 
- * Version: 1.2.0
+ * Version: 2.0.0
  * Date:    01.01.2019
  * 
  */
