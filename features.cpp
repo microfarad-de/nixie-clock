@@ -170,7 +170,7 @@ void CdTimerClass::tick (void) {
 }
 
 void CdTimerClass::secondIncrease (void) {
-  stop ();
+  //stop ();
   tm.increment10sec ();
   displayRefresh ();
   start ();
@@ -178,15 +178,15 @@ void CdTimerClass::secondIncrease (void) {
 
 void CdTimerClass::secondDecrease (void) {
   bool rv;
-  stop ();
+  //stop ();
   rv = tm.decrement10sec ();
   displayRefresh ();
-  if (rv) running = false, callback (false);
+  if (rv) stop ();
   else start ();
 }
 
 void CdTimerClass::minuteIncrease (void) {
-  stop ();
+  //stop ();
   tm.incrementMin ();
   displayRefresh ();
   start ();
@@ -194,10 +194,10 @@ void CdTimerClass::minuteIncrease (void) {
 
 void CdTimerClass::minuteDecrease (void) {
   bool rv;
-  stop ();
+  //stop ();
   rv = tm.decrementMin ();
   displayRefresh ();
-  if (rv) running = false, callback (false);
+  if (rv) stop ();
   else start ();
 }
 
@@ -213,13 +213,17 @@ void CdTimerClass::displayRefresh (void) {
 void CdTimerClass::start (void) {
   defaultTm.copy (&tm);
   active = true;
-  running = true;
-  callback (true);  
+  if (!running) {
+    running = true;
+    callback (true);
+  }  
 }
 
 void CdTimerClass::stop (void) {
-  running = false;
-  callback (false);
+  if (running) {
+    running = false;
+    callback (false);    
+  }
 }
 
 void CdTimerClass::resetAlarm (void) {
