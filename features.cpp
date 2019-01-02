@@ -1,7 +1,27 @@
-/*
+/* 
  * Implementation of various clock features (complications) 
  *
- * Karim Hraibi - 2018
+ * This source file is part of the Nixie Clock Arduino firmware
+ * found under http://www.github.com/microfarad-de/nixie-clock
+ * 
+ * Please visit:
+ *   http://www.microfarad.de
+ *   http://www.github.com/microfarad-de
+ *   
+ * Copyright (C) 2019 Karim Hraibi (khraibi at gmail.com)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include "features.h"
@@ -43,7 +63,7 @@ void BuzzerClass::loopHandler (void) {
 }
 
 void BuzzerClass::playMelody1 (void) {
-  if (!initialized) return;
+  if (!initialized || active) return;
   active = true;
   melody = melody1;
   melodyTs = millis () - 5000;
@@ -51,7 +71,7 @@ void BuzzerClass::playMelody1 (void) {
 }
 
 void BuzzerClass::playMelody2 (void) {
-  if (!initialized) return;
+  if (!initialized || active) return;
   active = true;
   melody = melody2;
   melodyTs = millis () - 5000;
@@ -349,6 +369,8 @@ void AlarmClass::initialize (AlarmEeprom_s *settings) {
 void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool active) {
   uint32_t ts = millis ();
 
+  if (minute != lastMinute) alarmCondition = false;
+  
   if (active && !snoozing && settings->mode != ALARM_OFF && !alarmCondition &&
       minute == settings->minute && hour == settings->hour && 
       (settings->mode != ALARM_WEEKDAYS || (wday >= 1 && wday <= 5)) && 
@@ -366,18 +388,19 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
 
   if (alarm && ts - alarmTs > ALARM_ALARM_DURATION) resetAlarm ();
 
-  if (minute != lastMinute) alarmCondition = false;
   lastMinute = minute;
 }
 
 void AlarmClass::startAlarm (void) {
-  alarm = true;
-  Nixie.resetBlinking ();
-  Nixie.blinkAll (true);
-  Buzzer.playMelody1 ();
-  alarmTs = millis ();
-  snoozing = false;
-  displayRefresh ();
+  if (!alarm) {
+    alarm = true;
+    Nixie.resetBlinking ();
+    Nixie.blinkAll (true);
+    Buzzer.playMelody1 ();
+    alarmTs = millis ();
+    snoozing = false;
+    displayRefresh ();
+  }
 }
 
 void AlarmClass::snooze (void) {

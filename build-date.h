@@ -1,8 +1,6 @@
 /*
  * Provides macros of compile date and time
  * 
- * Karim Hraibi - 2018
- * 
  */
 
  #ifndef __BUILDDATE_H

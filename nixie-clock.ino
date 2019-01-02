@@ -1,5 +1,6 @@
 /*
  * A Nixie Clock Implementation
+ * 
  * Features:
  * - 6 IN-8-2 Nixie featuring 0-9 digits and decimal points
  * - Multiplexed display, requires one single K155ID1 Nixie driver chip
@@ -18,14 +19,33 @@
  * - Settings are stored to EEPROM
  * - and more...
  * 
- * Karim Hraibi - 2018
+ * This source file is part of the Nixie Clock Arduino firmware
+ * found under http://www.github.com/microfarad-de/nixie-clock
  * 
- * Version: 2.0.0
- * Date:    01.01.2019
+ * Please visit:
+ *   http://www.microfarad.de
+ *   http://www.github.com/microfarad-de 
+ *   
+ * Copyright (C) 2019 Karim Hraibi (khraibi at gmail.com)
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
+ * Version: 2.1.0
+ * Date:    January 2019
  */
 #define VERSION_MAJOR 2  // Major version
-#define VERSION_MINOR 0  // Minor version
+#define VERSION_MINOR 1  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
