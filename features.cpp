@@ -26,7 +26,7 @@
 
 #include "features.h"
 
-#define TIMER_ALARM_DURATION      (5 * 60000)
+#define TIMER_ALARM_DURATION      (10 * 60000)
 #define ALARM_ALARM_DURATION      (30 * 60000)
 #define ALARM_SNOOZE_DURATION     (8 * 60000)
 #define BUTTON_LONG_PRESS_TIMEOUT (1000)

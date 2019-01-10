@@ -1,4 +1,4 @@
-/*
+/* 
  * A Nixie Clock Implementation
  * 
  * Features:
@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 2.1.0
+ * Version: 2.2.0
  * Date:    January 2019
  */
 #define VERSION_MAJOR 2  // Major version
-#define VERSION_MINOR 1  // Minor version
+#define VERSION_MINOR 2  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -1009,8 +1009,7 @@ void settingsMenu (void) {
 
   // modes where buttons 1 and 2 are used for digit/setting adjustments 
   // using the progressive scrolling acceleration feature
-  if (Main.menuState > SET_YEAR_E && Main.menuState != SHOW_TIME && Main.menuState != SHOW_DATE && Main.menuState != SHOW_ALARM &&  
-      Main.menuState != SHOW_STOPWATCH && Main.menuState != SHOW_SERVICE && Main.menuState != SHOW_BLANK && Main.menuState != SET_SEC) {
+  if ( Main.menuState == SHOW_TIMER || (Main.menuState >= SET_ALARM && Main.menuState != SET_SEC) ) {
     // button 1 or 2 - rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()){
       accelTs = ts;
@@ -1081,7 +1080,7 @@ void settingsMenu (void) {
 
   // modes where short-pressing button 0 is used for switching to the next display mode
   // when alarm(s) are active short-pressing button 0 will cancel or snooze the alarm(s) instead
-  if (Main.menuState <= SHOW_SERVICE || Main.menuState >= SET_HOUR || CdTimer.alarm || Alarm.alarm) {
+  if ( (Main.menuState >= SHOW_TIME && Main.menuState <= SHOW_SERVICE) || Main.menuState >= SET_HOUR || CdTimer.alarm || Alarm.alarm) {
     // button 0 - falling edge --> reset alarms or change state: nextState
     if (Button[0].falling ()) {
       if (Main.cppEffectEnabled)  Main.cppEffectEnabled = false; // disable cathode poisoning prevention effect
@@ -1096,7 +1095,7 @@ void settingsMenu (void) {
     }
   }
 
-  // in selected modes, long-pressing button 0 shall switch to the pre-defined display mode
+  // in selected modes, long-pressing button 0 shall switch to the pre-defined setting mode or display mode
   // when the alarm clock is snoozed or active, long-pressing button 0 will cancel the alarm
   if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM ||
       Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM) {
@@ -1119,7 +1118,7 @@ void settingsMenu (void) {
   }
 
   // timeout --> return to time display upon pressing button 0
-  if (Main.menuState <= SHOW_SERVICE && Main.menuState != SHOW_TIME && Main.menuState != SHOW_DATE && Main.menuState != SHOW_ALARM) {
+  if (Main.menuState == SHOW_TIMER || Main.menuState == SHOW_STOPWATCH) {
     if (ts - timeoutTs > menuTimeoutNextState) {
       nextState = SHOW_TIME_E;
     }
@@ -1203,8 +1202,8 @@ void settingsMenu (void) {
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
       Main.menuState = SHOW_TIMER;
     case SHOW_TIMER:
-      //if      (CdTimer.running || CdTimer.alarm) menuTimeout = menuTimeoutExtended; // extend menu timeout
-      //else if (menuTimeout != menuTimeoutDefault) timeoutTs = ts, menuTimeout = menuTimeoutDefault;
+      // reset the menu timeout as long as timer is running
+      if (CdTimer.running) timeoutTs = ts;
       
       // button 0 - long press --> reset the countdown timer
       if (Button[0].longPress ()) { 
@@ -1265,6 +1264,9 @@ void settingsMenu (void) {
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
       Main.menuState = SHOW_STOPWATCH;
     case SHOW_STOPWATCH:
+      // reset the menu timeout as long as stopwatch is running
+      if (Stopwatch.running) timeoutTs = ts;
+    
       // button 0 - long press --> reset the stopwatch
       if (Button[0].longPress ()) { 
         if (!CdTimer.active) {
