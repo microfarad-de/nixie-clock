@@ -1,4 +1,4 @@
-/* 
+/*
  * A Nixie Clock Implementation
  * 
  * Features:
@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 2.2.0
- * Date:    January 2019
+ * Version: 2.2.1
+ * Date:    February 2019
  */
 #define VERSION_MAJOR 2  // Major version
 #define VERSION_MINOR 2  // Minor version
-#define VERSION_MAINT 0  // Maintenance version
+#define VERSION_MAINT 1  // Maintenance version
 
 
 
@@ -131,9 +131,9 @@
  * Enumerations for the states of the menu navigation state machine
  * the program relies on the exact order of the below definitions
  */
-enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_ALARM_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
+enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_ALARM_E, SHOW_DEBUG_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
                    SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,   SET_MIN_E,    SET_SEC_E,        SET_DAY_E,      SET_MONTH_E,  SET_YEAR_E, 
-                   SHOW_TIME,   SHOW_DATE,      SHOW_ALARM,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
+                   SHOW_TIME,   SHOW_DATE,      SHOW_ALARM,   SHOW_DEBUG,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
                    SET_ALARM,   SET_SETTINGS,   SET_HOUR,     SET_MIN,      SET_SEC,          SET_DAY,        SET_MONTH,    SET_YEAR };
 
 
@@ -827,7 +827,7 @@ void adcRead (void) {
     }
     // process button values
     else {
-      avgVal[chanIdx] = (avgVal[chanIdx] * 7 + (int32_t)adcVal) >> 3;      // IIR low-pass filtering for button debouncing
+      avgVal[chanIdx] = (avgVal[chanIdx] * 15 + (int32_t)adcVal) >> 4;      // IIR low-pass filtering for button debouncing
       if (avgVal[chanIdx] < 512) {
         if (Button[chanIdx].pressed == false) Nixie.resetBlinking();       // synchronize digit blinking with the rising edge of a button press
         Button[chanIdx].press (); 
@@ -1039,7 +1039,7 @@ void settingsMenu (void) {
 
   // in time display mode, buttons 1 and 2 are used switching to the date and alarm modes 
   // or for adjusting display brightness when long-pressed
-  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM) {
+  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_DEBUG) {
     // button 1  or 2- rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()) {
       timeoutTs = ts;
@@ -1049,14 +1049,16 @@ void settingsMenu (void) {
     else if (Button[1].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
       else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_DATE_E;
-      else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_ALARM_E;
+      else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_DEBUG_E;  // TODO: remove debug code
+      else if (Main.menuState == SHOW_DEBUG) Main.menuState = SHOW_ALARM_E;
       else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_TIME_E;
     }
     // button 2 - falling edge --> snooze alarm or change state: SHOW_ALARM->SHOW_DATE->SHOW_TIME
     else if (Button[2].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
       else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_ALARM_E;
-      else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_DATE_E;
+      else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_DEBUG_E;  // TODO: remove debug code
+      else if (Main.menuState == SHOW_DEBUG) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
     }
     else if (Alarm.alarm || Alarm.snoozing) {
@@ -1097,7 +1099,7 @@ void settingsMenu (void) {
 
   // in selected modes, long-pressing button 0 shall switch to the pre-defined setting mode or display mode
   // when the alarm clock is snoozed or active, long-pressing button 0 will cancel the alarm
-  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM ||
+  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_DEBUG ||  // TODO: remove debug code
       Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM) {
     // button 0 - long press --> reset alarm or change state: returnState 
     if (Button[0].longPress ()) {
@@ -1190,6 +1192,19 @@ void settingsMenu (void) {
         Alarm.resetAlarm ();
         CdTimer.resetAlarm ();
       }
+      break;
+
+    /*################################################################################*/
+    // Temporary display mode for debugging the sporadic missed alarm issue
+    // TODO: remove debug code
+    case SHOW_DEBUG_E:
+      Nixie.setDigits (&Alarm.debugDigits);
+      Alarm.displayRefresh ();
+      nextState = SHOW_TIME_E; //Main.menuOrder[menuIndex];
+      returnState = SET_HOUR_E;
+      Main.menuState = SHOW_DEBUG;
+    case SHOW_DEBUG:
+      // no action
       break;
 
     /*################################################################################*/

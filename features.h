@@ -1,4 +1,4 @@
-/* 
+/*
  * Implementation of various clock features (complications) 
  *
  * This source file is part of the Nixie Clock Arduino firmware
@@ -186,6 +186,7 @@ class AlarmClass {
     bool alarm = false;
     bool snoozing = false;
     NixieDigits_s digits;
+    NixieDigits_s debugDigits; // TODO: remove debug code
     AlarmEeprom_s *settings = NULL;
 
   private:

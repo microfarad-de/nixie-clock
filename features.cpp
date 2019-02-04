@@ -1,4 +1,4 @@
-/* 
+/*
  * Implementation of various clock features (complications) 
  *
  * This source file is part of the Nixie Clock Arduino firmware
@@ -375,9 +375,9 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
       minute == settings->minute && hour == settings->hour && 
       (settings->mode != ALARM_WEEKDAYS || (wday >= 1 && wday <= 5)) && 
       (settings->mode != ALARM_WEEKENDS || wday == 0 || wday == 6)) {
-        startAlarm (); 
-        alarmCondition = true;
-      }
+    startAlarm (); 
+    alarmCondition = true;
+  }
 
   if (snoozing && ts - snoozeTs > ALARM_SNOOZE_DURATION) startAlarm ();
 
@@ -389,6 +389,17 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
   if (alarm && ts - alarmTs > ALARM_ALARM_DURATION) resetAlarm ();
 
   lastMinute = minute;
+
+  // Temporary code for debugging the sporadic missed alarm issue
+  // TODO: remove debug code
+
+  debugDigits.value[0] = (uint8_t)active;
+  debugDigits.value[1] = (uint8_t)snoozing;
+  debugDigits.value[2] = (uint8_t)alarmCondition;
+  debugDigits.value[3] = (uint8_t)settings->mode;
+  debugDigits.blank[4] = true;
+  debugDigits.value[5] = (uint8_t)wday;
+
 }
 
 void AlarmClass::startAlarm (void) {
