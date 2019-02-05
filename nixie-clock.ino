@@ -193,7 +193,7 @@ struct {
   { (int8_t *)&Settings.dcfSignalIndicator,     5, 2, false, true,  true }, //  - signal indicator
   { (int8_t *)&Settings.dcfSyncHour,            5, 3,     0,   23,     3 }, //  - sync hour
   { (int8_t *)&Settings.secPerDayCorrect,       6, 1,   -99,   99,     0 }, // clock drift correction (seconds per day)
-  { (int8_t *)&Settings.weekStartDay,           7, 1,     1,    7,     0 }  // start day of the week (1 = Monday, 7 = Sunday)
+  { (int8_t *)&Settings.weekStartDay,           6, 2,     1,    7,     7 }  // start day of the week (1 = Monday, 7 = Sunday)
 };
 
 /*
