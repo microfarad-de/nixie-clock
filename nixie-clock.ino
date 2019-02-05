@@ -1,4 +1,4 @@
-/*
+/* 
  * A Nixie Clock Implementation
  * 
  * Features:
@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 2.2.1
+ * Version: 3.0.0
  * Date:    February 2019
  */
-#define VERSION_MAJOR 2  // Major version
-#define VERSION_MINOR 2  // Minor version
-#define VERSION_MAINT 1  // Maintenance version
+#define VERSION_MAJOR 3  // Major version
+#define VERSION_MINOR 0  // Minor version
+#define VERSION_MAINT 0  // Maintenance version
 
 
 
@@ -120,7 +120,7 @@
 #define EEPROM_SETTINGS_ADDR 0                   // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE 3                   // size of the dynamic menu ordering list
-#define SETTINGS_LUT_SIZE 14                     // size of the settings lookup table
+#define SETTINGS_LUT_SIZE 15                     // size of the settings lookup table
 
 // conversion macros
 #define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
@@ -131,10 +131,10 @@
  * Enumerations for the states of the menu navigation state machine
  * the program relies on the exact order of the below definitions
  */
-enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_ALARM_E, SHOW_DEBUG_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
+enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_ALARM_E, SHOW_WEEK_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
                    SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,   SET_MIN_E,    SET_SEC_E,        SET_DAY_E,      SET_MONTH_E,  SET_YEAR_E, 
-                   SHOW_TIME,   SHOW_DATE,      SHOW_ALARM,   SHOW_DEBUG,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
-                   SET_ALARM,   SET_SETTINGS,   SET_HOUR,     SET_MIN,      SET_SEC,          SET_DAY,        SET_MONTH,    SET_YEAR };
+                   SHOW_TIME,   SHOW_DATE,      SHOW_ALARM,   SHOW_WEEK,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
+                   SET_ALARM,   SET_SETTINGS,   SET_HOUR,     SET_MIN,      SET_SEC,          SET_DAY,        SET_MONTH,    SET_YEAR,   };
 
 
 /*
@@ -161,7 +161,8 @@ struct Settings_t {
   uint8_t blankScreenFinishHr2;                    // finish hour for disabling the display (second profile)
   uint8_t reserved[5];                             // reserved for future use
   AlarmEeprom_s alarm;                             // alarm clock settings
-  uint8_t reserved1[4];                            // reserved for future use
+  int8_t weekStartDay;                             // the first day of a calendar week (1 = Monday, 7 = Sunday)
+  uint8_t reserved1[3];                            // reserved for future use
 } Settings;
 
 
@@ -191,7 +192,8 @@ struct {
   { (int8_t *)&Settings.dcfSyncEnabled,         5, 1, false, true,  true }, // DCF sync
   { (int8_t *)&Settings.dcfSignalIndicator,     5, 2, false, true,  true }, //  - signal indicator
   { (int8_t *)&Settings.dcfSyncHour,            5, 3,     0,   23,     3 }, //  - sync hour
-  { (int8_t *)&Settings.secPerDayCorrect,       6, 1,   -99,   99,     0 }  // clock drift correction (seconds per day)
+  { (int8_t *)&Settings.secPerDayCorrect,       6, 1,   -99,   99,     0 }, // clock drift correction (seconds per day)
+  { (int8_t *)&Settings.weekStartDay,           7, 1,     1,    7,     0 }  // start day of the week (1 = Monday, 7 = Sunday)
 };
 
 /*
@@ -214,8 +216,8 @@ class MainClass {
     volatile uint8_t printTickCount = 0;             // incremented by the Timer1 ISR every second
   #endif
     tm *systemTm = NULL;                             // pointer to the current system time structure
-    NixieDigits_s timeDigits;                        // structure for storing the Nixie display digit values of the current time
-    NixieDigits_s dateDigits;                        // structure for storing the Nixie display digit values of the current date 
+    NixieDigits_s timeDigits;                        // stores the Nixie display digit values of the current time
+    NixieDigits_s dateDigits;                        // stores the Nixie display digit values of the current date 
     MenuState_e menuState = SHOW_TIME_E;             // state of the menu navigation state machine 
 
     // analog pins as an array
@@ -354,24 +356,6 @@ void loop() {
   static bool cppCondition = false, blankCondition = false;
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
   time_t sysTime;
-  
-/* #ifdef SERIAL_DEBUG
-  // measure main loop duration
-  static uint32_t ts, lastTs;
-  static bool tsFlag = false;
-  lastTs = ts;
-  ts = micros ();
-  if (Main.printTickCount == 5) {
-    if (!tsFlag) {
-      PRINT   ("[loop] duration (us)=");
-      PRINTLN (ts - lastTs, DEC);
-      tsFlag = true;
-    }
-  }
-  else {
-    tsFlag = false;
-  }
-#endif */
 
   // actions to be executed once every second
   if (Main.timer1TickFlag) {
@@ -1039,26 +1023,26 @@ void settingsMenu (void) {
 
   // in time display mode, buttons 1 and 2 are used switching to the date and alarm modes 
   // or for adjusting display brightness when long-pressed
-  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_DEBUG) {
+  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_WEEK) {
     // button 1  or 2- rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()) {
       timeoutTs = ts;
       brightnessEnable = true;
     }
-    // button 1 - falling edge --> snooze alarm or change state: SHOW_DATE->SHOW_ALARM->SHOW_TIME 
+    // button 1 - falling edge --> snooze alarm or change state: SHOW_DATE->SHOW_WEEK->SHOW_ALARM->SHOW_TIME 
     else if (Button[1].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
       else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_DATE_E;
-      else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_DEBUG_E;  // TODO: remove debug code
-      else if (Main.menuState == SHOW_DEBUG) Main.menuState = SHOW_ALARM_E;
+      else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_WEEK_E;
+      else if (Main.menuState == SHOW_WEEK) Main.menuState = SHOW_ALARM_E;
       else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_TIME_E;
     }
-    // button 2 - falling edge --> snooze alarm or change state: SHOW_ALARM->SHOW_DATE->SHOW_TIME
+    // button 2 - falling edge --> snooze alarm or change state: SHOW_ALARM->SHOW_WEEK->SHOW_DATE->SHOW_TIME
     else if (Button[2].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
       else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_ALARM_E;
-      else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_DEBUG_E;  // TODO: remove debug code
-      else if (Main.menuState == SHOW_DEBUG) Main.menuState = SHOW_DATE_E;
+      else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_WEEK_E;
+      else if (Main.menuState == SHOW_WEEK) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
     }
     else if (Alarm.alarm || Alarm.snoozing) {
@@ -1099,7 +1083,7 @@ void settingsMenu (void) {
 
   // in selected modes, long-pressing button 0 shall switch to the pre-defined setting mode or display mode
   // when the alarm clock is snoozed or active, long-pressing button 0 will cancel the alarm
-  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_DEBUG ||  // TODO: remove debug code
+  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_WEEK ||
       Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM) {
     // button 0 - long press --> reset alarm or change state: returnState 
     if (Button[0].longPress ()) {
@@ -1166,7 +1150,7 @@ void settingsMenu (void) {
       Main.dateDigits.comma[2] = true;
       for (i = 0; i < 6; i++) Main.dateDigits.blnk[i] = false;
       //menuIndex = 0;
-      nextState = SHOW_TIME_E; //Main.menuOrder[menuIndex];
+      nextState = SHOW_TIME_E;
       returnState = SET_DAY_E;
       Main.menuState = SHOW_DATE;
     case SHOW_DATE:
@@ -1182,7 +1166,7 @@ void settingsMenu (void) {
       Alarm.displayRefresh ();
       for (i = 0; i < 6; i++) Alarm.digits.blnk[i] = false;
       //menuIndex = 0;
-      nextState = SHOW_TIME_E; //Main.menuOrder[menuIndex];
+      nextState = SHOW_TIME_E;
       returnState = SET_ALARM_E;
       Main.menuState = SHOW_ALARM;
     case SHOW_ALARM:
@@ -1195,15 +1179,20 @@ void settingsMenu (void) {
       break;
 
     /*################################################################################*/
-    // Temporary display mode for debugging the sporadic missed alarm issue
-    // TODO: remove debug code
-    case SHOW_DEBUG_E:
-      Nixie.setDigits (&Alarm.debugDigits);
-      Alarm.displayRefresh ();
-      nextState = SHOW_TIME_E; //Main.menuOrder[menuIndex];
-      returnState = SET_HOUR_E;
-      Main.menuState = SHOW_DEBUG;
-    case SHOW_DEBUG:
+    case SHOW_WEEK_E: 
+      Nixie.resetDigits (&valueDigits);
+      Nixie.setDigits (&valueDigits); 
+      valU8 = week_of_year (Main.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + 1;
+      valueDigits.value[0] = dec2bcdLow (valU8);
+      valueDigits.value[1] = dec2bcdHigh (valU8);
+      valueDigits.blank[2] = true;
+      valueDigits.blank[3] = true;
+      valueDigits.value[4] = (uint8_t)(Main.systemTm->tm_wday == 0 ? 7 : Main.systemTm->tm_wday);
+      valueDigits.blank[5] = true;
+      nextState = SHOW_TIME_E;
+      returnState = SHOW_WEEK_E;
+      Main.menuState = SHOW_WEEK; 
+    case SHOW_WEEK:
       // no action
       break;
 
