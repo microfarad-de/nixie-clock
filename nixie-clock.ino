@@ -1,4 +1,4 @@
-/* 
+/*
  * A Nixie Clock Implementation
  * 
  * Features:
@@ -131,10 +131,10 @@
  * Enumerations for the states of the menu navigation state machine
  * the program relies on the exact order of the below definitions
  */
-enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_ALARM_E, SHOW_WEEK_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
-                   SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,   SET_MIN_E,    SET_SEC_E,        SET_DAY_E,      SET_MONTH_E,  SET_YEAR_E, 
-                   SHOW_TIME,   SHOW_DATE,      SHOW_ALARM,   SHOW_WEEK,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
-                   SET_ALARM,   SET_SETTINGS,   SET_HOUR,     SET_MIN,      SET_SEC,          SET_DAY,        SET_MONTH,    SET_YEAR,   };
+enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_WEEK_E, SHOW_ALARM_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
+                   SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,  SET_MIN_E,    SET_SEC_E,    SET_DAY_E,        SET_MONTH_E,    SET_YEAR_E, 
+                   SHOW_TIME,   SHOW_DATE,      SHOW_WEEK,   SHOW_ALARM,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
+                   SET_ALARM,   SET_SETTINGS,   SET_HOUR,    SET_MIN,      SET_SEC,      SET_DAY,          SET_MONTH,      SET_YEAR,   };
 
 
 /*
@@ -159,10 +159,10 @@ struct Settings_t {
   uint8_t blankScreenMode2;                        // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
   uint8_t blankScreenStartHr2;                     // start hour for disabling the display (second profile)
   uint8_t blankScreenFinishHr2;                    // finish hour for disabling the display (second profile)
-  uint8_t reserved[5];                             // reserved for future use
+  uint8_t reserved1[5];                            // reserved for future use
   AlarmEeprom_s alarm;                             // alarm clock settings
   int8_t weekStartDay;                             // the first day of a calendar week (1 = Monday, 7 = Sunday)
-  uint8_t reserved1[3];                            // reserved for future use
+  uint8_t reserved2[3];                            // reserved for future use
 } Settings;
 
 
@@ -1161,6 +1161,27 @@ void settingsMenu (void) {
       break;
 
     /*################################################################################*/
+    case SHOW_WEEK_E: 
+      Nixie.resetDigits (&valueDigits);
+      Nixie.setDigits (&valueDigits); 
+      valU8 = week_of_year (Main.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + 1;
+      valueDigits.value[0] = dec2bcdLow (valU8);
+      valueDigits.value[1] = dec2bcdHigh (valU8);
+      valueDigits.blank[2] = true;
+      valueDigits.blank[3] = true;
+      valueDigits.value[4] = (uint8_t)(Main.systemTm->tm_wday == 0 ? 7 : Main.systemTm->tm_wday);
+      valueDigits.blank[5] = true;
+      nextState = SHOW_TIME_E;
+      returnState = SHOW_WEEK_E;
+      Main.menuState = SHOW_WEEK; 
+    case SHOW_WEEK:
+      // button 1 long press --> toggle DCF77 sync status
+      if (Button[1].longPress ()) {
+        Main.dcfSyncActive = !Main.dcfSyncActive;
+      }
+      break;
+
+    /*################################################################################*/
     case SHOW_ALARM_E:
       Nixie.setDigits (&Alarm.digits);
       Alarm.displayRefresh ();
@@ -1176,24 +1197,6 @@ void settingsMenu (void) {
         Alarm.resetAlarm ();
         CdTimer.resetAlarm ();
       }
-      break;
-
-    /*################################################################################*/
-    case SHOW_WEEK_E: 
-      Nixie.resetDigits (&valueDigits);
-      Nixie.setDigits (&valueDigits); 
-      valU8 = week_of_year (Main.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + 1;
-      valueDigits.value[0] = dec2bcdLow (valU8);
-      valueDigits.value[1] = dec2bcdHigh (valU8);
-      valueDigits.blank[2] = true;
-      valueDigits.blank[3] = true;
-      valueDigits.value[4] = (uint8_t)(Main.systemTm->tm_wday == 0 ? 7 : Main.systemTm->tm_wday);
-      valueDigits.blank[5] = true;
-      nextState = SHOW_TIME_E;
-      returnState = SHOW_WEEK_E;
-      Main.menuState = SHOW_WEEK; 
-    case SHOW_WEEK:
-      // no action
       break;
 
     /*################################################################################*/
