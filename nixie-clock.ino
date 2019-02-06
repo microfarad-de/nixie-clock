@@ -211,7 +211,6 @@ class MainClass {
     volatile bool timer1PeriodUpdateFlag = false;    // flag is set whenever Timer1 period needs to be updated by the ISR
     volatile bool timer2PeriodUpdateFlag = false;    // flag is set whenever Timer2 period needs to be updated by the ISR
     volatile uint8_t timer2SecCounter = 0;           // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
-    volatile uint8_t timer2TenthCounter = 0;         // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
   #ifdef SERIAL_DEBUG
     volatile uint8_t printTickCount = 0;             // incremented by the Timer1 ISR every second
   #endif
@@ -310,17 +309,16 @@ void setup() {
   Timer1.initialize (Settings.timer1Period);
   Timer1.attachInterrupt (timer1ISR);
 
-  // initialize Timer2, set the period to 25ms (1s / 40)
+  // initialize Timer2, set the period to 10ms (1s / 100)
   // Timer2 is used for Chronometer and Countdown Timer features
   // Timer2 has a maximum period of 32768us
-  Timer2.initialize (Settings.timer1Period / 40); 
+  Timer2.initialize (Settings.timer1Period / 100); 
   Timer2.attachInterrupt (timer2ISR);
   cli ();
   Timer2.stop ();
   Timer2.restart ();
   sei ();
   Main.timer2SecCounter = 0; 
-  Main.timer2TenthCounter = 0;
   
 
   // initilaize the DCF77 receiver
@@ -531,24 +529,20 @@ void timer1ISR () {
 void timer2ISR () {
     
   Main.timer2SecCounter++;
-  Main.timer2TenthCounter++;
   
-  // 1s period = 25ms * 40
-  if (Main.timer2SecCounter >= 40) {
+  // 1s period = 10ms * 100
+  if (Main.timer2SecCounter >= 100) {
     CdTimer.tick ();
     Main.timer2SecCounter = 0;
   }
 
-  // 1/10s period = 25ms * 4
-  if (Main.timer2TenthCounter >= 4) {
-    Stopwatch.tick ();
-    Main.timer2TenthCounter = 0;
-  }
+  // 1/100s period = 10ms
+  Stopwatch.tick ();
 
   // to avoid race conditions, Timer2 period must be updated from within the ISR
   if (Main.timer2PeriodUpdateFlag) {
-    // initialize Timer2, set the period to 25ms (1s / 40)
-    Timer2.setPeriod (Settings.timer1Period / 40);
+    // initialize Timer2, set the period to 10ms (1s / 100)
+    Timer2.setPeriod (Settings.timer1Period / 100);
     Main.timer2PeriodUpdateFlag = false;
   }
 }
@@ -577,8 +571,7 @@ void featureCallback (bool start) {
     Timer2.stop (); 
     Timer2.restart (); 
     sei (); 
-    Main.timer2SecCounter = 0; 
-    Main.timer2TenthCounter = 0;   
+    Main.timer2SecCounter = 0;    
   }
 }
 /*********/

@@ -87,12 +87,13 @@ void BuzzerClass::stop (void) {
 
 /*#######################################################################################*/
 
-void ChronoClass::increment10th (void) volatile {
-  tenth++;
-  if (tenth > 9) tenth = 0, second++;
+void ChronoClass::increment100th (void) volatile {
+  hunderth++;
+  if (hunderth > 99) hunderth = 0, second++;
   if (second > 59) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
 }
+
 
 void ChronoClass::increment10sec (void) volatile {
   second += 10;
@@ -138,21 +139,21 @@ bool ChronoClass::decrementSec (void) volatile {
 }
 
 void ChronoClass::reset (void) volatile {
-  tenth = 0;
+  hunderth = 0;
   second = 0;
   minute = 0;
   hour = 0;
 }
 
 void ChronoClass::copy (volatile ChronoClass *tm) volatile {
-  tenth = tm->tenth;
+  hunderth = tm->hunderth;
   second = tm->second;
   minute = tm->minute;
   hour = tm->hour;
 }
 
 void ChronoClass::roundup (void) volatile {
-  tenth = 0;
+  hunderth = 0;
   if (second !=0) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
 }
@@ -161,7 +162,7 @@ void ChronoClass::roundup (void) volatile {
 
 void CdTimerClass::initialize (void (*callback)(bool)) {
   this->callback = callback;
-  defaultTm.tenth = 0;
+  defaultTm.hunderth = 0;
   defaultTm.second = 0;
   defaultTm.minute = 5;
   defaultTm.hour = 0;
@@ -285,10 +286,10 @@ void StopwatchClass::initialize (void (*callback)(bool reset)) {
 
 void StopwatchClass::loopHandler (void) {
   if (tickFlag) {
-    tm.increment10th ();
+    tm.increment100th ();
     if (!paused) displayRefresh ();
     if (tm.hour > 1) {
-      tm.hour = 1; tm.minute = 59; tm.second = 59; tm.tenth = 9;
+      tm.hour = 1; tm.minute = 59; tm.second = 59; tm.hunderth = 99;
       stop ();
     }
     tickFlag = false;
@@ -329,8 +330,8 @@ void StopwatchClass::pause (bool enable) {
 }
 
 void StopwatchClass::displayRefresh (void) {
-  digits.value[0] = 0;
-  digits.value[1] = dec2bcdLow  (tm.tenth);
+  digits.value[0] = dec2bcdLow  (tm.hunderth);
+  digits.value[1] = dec2bcdHigh (tm.hunderth);
   digits.value[2] = dec2bcdLow  (tm.second);
   digits.value[3] = dec2bcdHigh (tm.second);
   digits.value[4] = dec2bcdLow  (tm.minute);

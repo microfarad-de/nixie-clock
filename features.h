@@ -66,7 +66,7 @@ extern BuzzerClass Buzzer;
  */
 class ChronoClass {
   public:
-    void increment10th (void) volatile;
+    void increment100th (void) volatile;
     void increment10sec (void) volatile;
     bool decrement10sec (void) volatile;
     void incrementMin (void) volatile;
@@ -77,7 +77,7 @@ class ChronoClass {
     void copy (volatile ChronoClass *) volatile;
     void roundup (void) volatile;
 
-    volatile int8_t tenth = 0;
+    volatile int8_t hunderth = 0;
     volatile int8_t second = 0;
     volatile int8_t minute = 0;
     volatile int8_t hour = 0;
