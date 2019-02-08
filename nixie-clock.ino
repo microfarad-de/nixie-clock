@@ -1045,14 +1045,14 @@ void settingsMenu (void) {
       else if (Main.menuState == SHOW_WEEK) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
     }
-    else if (Alarm.alarm || Alarm.snoozing) {
-      // button 1 or 2 - long press --> reset alarm
-      if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
-      brightnessEnable = false;
-    }
     else if ( Main.menuState == SHOW_TIME) {
+      if (Alarm.alarm || Alarm.snoozing) {
+        // button 1 or 2 - long press --> reset alarm
+        if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
+        brightnessEnable = false;
+      }
       // button 1 or 2 - long press --> increase/decrease brightness
-      if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50 && brightnessEnable) {
+      else if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50 && brightnessEnable) {
         if (Button[1].pressed) valU8 = Brightness.increase ();
         else                   valU8 = Brightness.decrease ();
         Nixie.setBrightness (valU8);
@@ -1087,8 +1087,12 @@ void settingsMenu (void) {
       Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM) {
     // button 0 - long press --> reset alarm or change state: returnState 
     if (Button[0].longPress ()) {
-      if (Alarm.alarm || Alarm.snoozing) Alarm.resetAlarm ();  // stop the alarm clock
-      else Main.menuState = returnState;
+      if (Alarm.alarm || Alarm.snoozing) {
+        Alarm.resetAlarm ();  // stop the alarm clock
+      }
+      else {
+        Main.menuState = returnState;
+      }
     }
   }
 
