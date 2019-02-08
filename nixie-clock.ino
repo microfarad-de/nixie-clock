@@ -1021,8 +1021,9 @@ void settingsMenu (void) {
 
   Nixie.refresh ();  // refresh the Nixie tube display
 
-  // in time display mode, buttons 1 and 2 are used switching to the date and alarm modes 
+  // in timekeeping and alarm modes, buttons 1 and 2 are used switching to the date and alarm modes 
   // or for adjusting display brightness when long-pressed
+  // or for snoozing or resetting the alarm
   if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_WEEK) {
     // button 1  or 2- rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()) {
@@ -1045,14 +1046,26 @@ void settingsMenu (void) {
       else if (Main.menuState == SHOW_WEEK) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
     }
-    else if ( Main.menuState == SHOW_TIME) {
-      if (Alarm.alarm || Alarm.snoozing) {
-        // button 1 or 2 - long press --> reset alarm
-        if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
-        brightnessEnable = false;
+    else if (Alarm.alarm || Alarm.snoozing) {
+      // button 1 or 2 - long press --> reset alarm
+      if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
+      brightnessEnable = false;
+    }
+    else if ( Main.menuState == SHOW_ALARM) {
+      // button 1 long press --> toggle alarm active
+      if (Button[1].longPress ()) {
+        Alarm.modeToggle ();
       }
+    }
+    else if ( Main.menuState == SHOW_DATE || Main.menuState == SHOW_WEEK) {
+      // button 1 long press --> toggle DCF77 sync status
+      if (Button[1].longPress ()) {
+        Main.dcfSyncActive = !Main.dcfSyncActive;
+      }
+    }
+    else if ( Main.menuState == SHOW_TIME) {
       // button 1 or 2 - long press --> increase/decrease brightness
-      else if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50 && brightnessEnable) {
+      if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50 && brightnessEnable) {
         if (Button[1].pressed) valU8 = Brightness.increase ();
         else                   valU8 = Brightness.decrease ();
         Nixie.setBrightness (valU8);
@@ -1158,10 +1171,7 @@ void settingsMenu (void) {
       returnState = SET_DAY_E;
       Main.menuState = SHOW_DATE;
     case SHOW_DATE:
-      // button 1 long press --> toggle DCF77 sync status
-      if (Button[1].longPress ()) {
-        Main.dcfSyncActive = !Main.dcfSyncActive;
-      }
+      // do nothing
       break;
 
     /*################################################################################*/
@@ -1179,10 +1189,7 @@ void settingsMenu (void) {
       returnState = SHOW_WEEK_E;
       Main.menuState = SHOW_WEEK; 
     case SHOW_WEEK:
-      // button 1 long press --> toggle DCF77 sync status
-      if (Button[1].longPress ()) {
-        Main.dcfSyncActive = !Main.dcfSyncActive;
-      }
+      // do nothing
       break;
 
     /*################################################################################*/
@@ -1195,12 +1202,7 @@ void settingsMenu (void) {
       returnState = SET_ALARM_E;
       Main.menuState = SHOW_ALARM;
     case SHOW_ALARM:
-      // button 1 long press --> toggle alarm active
-      if (Button[1].longPress ()) {
-        Alarm.modeToggle ();
-        Alarm.resetAlarm ();
-        CdTimer.resetAlarm ();
-      }
+      // do nothing
       break;
 
     /*################################################################################*/
