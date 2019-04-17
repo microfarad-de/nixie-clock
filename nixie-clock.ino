@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.0.0
- * Date:    February 2019
+ * Version: 3.1.0
+ * Date:    April 2019
  */
 #define VERSION_MAJOR 3  // Major version
-#define VERSION_MINOR 0  // Minor version
+#define VERSION_MINOR 1  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -63,6 +63,12 @@
 #include "helper.h"
 #include "features.h"
 //#include "build-date.h"
+
+
+// reset the Nixie tube uptime to this value in seconds upon booting for the very first time
+#define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)  
+// change the following value to force an uptime reset
+#define NIXIE_UPTIME_RESET_VAL 0xDEADBEEF     
 
 
 //#define SERIAL_DEBUG              // activate debug printing over RS232
@@ -179,13 +185,13 @@ struct {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] = 
 {
-  { (int8_t *)&Settings.blankScreenMode,        1, 1,     0,    4,     0 }, // screen blanking (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
+  { (int8_t *)&Settings.blankScreenMode,        1, 1,     0,    4,     0 }, // screen blanking (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
   { (int8_t *)&Settings.blankScreenStartHr,     1, 2,     0,   23,     2 }, //  - start hour
   { (int8_t *)&Settings.blankScreenFinishHr,    1, 3,     0,   23,     6 }, //  - finish hour
-  { (int8_t *)&Settings.blankScreenMode2,       2, 1,     0,    3,     0 }, // screen blanking (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
+  { (int8_t *)&Settings.blankScreenMode2,       2, 1,     0,    3,     0 }, // screen blanking (second profile) (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends)
   { (int8_t *)&Settings.blankScreenStartHr2,    2, 2,     0,   23,     2 }, //  - start hour
   { (int8_t *)&Settings.blankScreenFinishHr2,   2, 3,     0,   23,     6 }, //  - finish hour
-  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 1,     0,    3,     1 }, // cathode poisoning prevention (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
+  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 1,     0,    3,     1 }, // cathode poisoning prevention (0 = off, 1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
   { (int8_t *)&Settings.cppStartHr,             3, 2,     0,   23,     4 }, //  - start hour
   { (int8_t *)&Settings.brightnessAutoAdjust,   4, 1, false, true,  true }, // brightness auto adjust
   { (int8_t *)&Settings.brightnessBoost,        4, 2, false, true,  true }, //  - brighntess boost
@@ -284,10 +290,10 @@ void setup() {
       Settings.timer1Period > TIMER1_DEFUALT_PERIOD + 10000) Settings.timer1Period = TIMER1_DEFUALT_PERIOD;
 
   // reset nixie tube uptime on initial start
-  if (Settings.nixieUptimeResetCode != 0xDEADBEEF) {
-    Settings.nixieUptime = 0;
-    Settings.nixieUptimeResetCode = 0xDEADBEEF;
-    PRINTLN ("[setup] nixieUptime=0");
+  if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_VAL) {
+    Settings.nixieUptime = NIXIE_UPTIME_INIT_VAL;
+    Settings.nixieUptimeResetCode = NIXIE_UPTIME_RESET_VAL;
+    PRINTLN ("[setup] nixieUptime initialized");
   }
   PRINTLN ("[setup] other:");
   // validate settings loaded from EEPROM
@@ -875,6 +881,7 @@ void powerSave (void) {
       // if below a certain voltage threshold, then switch to deep sleep
       if (voltage < voltageThreshold) {
         power_timer1_disable ();
+        ADCSRA &= ~_BV(ADEN);  // Disable ADC, see ATmega328P datasheet Section 28.9.2
         power_adc_disable ();
         cli ();
         WDTCSR |= _BV(WDCE) | _BV(WDE);
@@ -906,6 +913,7 @@ void powerSave (void) {
   } // while (digitalRead (DCF_PIN) == LOW)
   
   power_all_enable();       // turn on peripherals
+  ADCSRA |= _BV(ADEN);      // Enable ADC, see ATmega328P datasheet Section 28.9.2
   wdt_enable (WDT_TIMEOUT); // enable watchdog timer
   
 #ifdef SERIAL_DEBUG
