@@ -11,3 +11,13 @@ Debugging via the Serial port can be enabled by uncommenting the "#define SERIAL
 This firmware has been verified using an Arduino Pro Mini compatible board based on the ATmega328P microcontroller.
 
 Unless stated otherwise within the source file headers, please feel free to use or distribute the code or parts of it under the *GNU General Public License v3.0*.
+
+## Prerequisites
+
+* ATmega328P based Arduino Pro Mini, Arduino Nano or similar model
+* Custom bootloader from: https://github.com/microfarad-de/bootloader
+
+## Circuit Diagram
+
+The circuit diagram for this device can be found under the */doc* folder or can be downloaded using the follwoing link:
+https://github.com/microfarad-de/nixie-clock/raw/master/doc/nixie-clock-schematic.png
