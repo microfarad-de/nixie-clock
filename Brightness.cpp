@@ -24,7 +24,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "brightness.h"
+#include "Brightness.h"
 #include <EEPROM.h>
 #include <assert.h>
 #include "helper.h"
