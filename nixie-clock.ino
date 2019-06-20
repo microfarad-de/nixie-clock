@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.1.0
- * Date:    April 2019
+ * Version: 3.2.0
+ * Date:    June 2019
  */
 #define VERSION_MAJOR 3  // Major version
-#define VERSION_MINOR 1  // Minor version
+#define VERSION_MINOR 2  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -66,9 +66,11 @@
 
 
 // reset the Nixie tube uptime to this value in seconds upon booting for the very first time
-#define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)  
+#define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)
+  
 // change the following value to force an uptime reset
 #define NIXIE_UPTIME_RESET_VAL 0xDEADBEEF     
+
 
 
 //#define SERIAL_DEBUG              // activate debug printing over RS232
@@ -185,16 +187,16 @@ struct {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] = 
 {
-  { (int8_t *)&Settings.blankScreenMode,        1, 1,     0,    4,     0 }, // screen blanking (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
-  { (int8_t *)&Settings.blankScreenStartHr,     1, 2,     0,   23,     2 }, //  - start hour
-  { (int8_t *)&Settings.blankScreenFinishHr,    1, 3,     0,   23,     6 }, //  - finish hour
-  { (int8_t *)&Settings.blankScreenMode2,       2, 1,     0,    3,     0 }, // screen blanking (second profile) (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends)
+  { (int8_t *)&Settings.blankScreenMode,        1, 1,     0,    4,     2 }, // screen blanking (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
+  { (int8_t *)&Settings.blankScreenStartHr,     1, 2,     0,   23,     8 }, //  - start hour
+  { (int8_t *)&Settings.blankScreenFinishHr,    1, 3,     0,   23,    17 }, //  - finish hour
+  { (int8_t *)&Settings.blankScreenMode2,       2, 1,     0,    3,     1 }, // screen blanking (second profile) (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends)
   { (int8_t *)&Settings.blankScreenStartHr2,    2, 2,     0,   23,     2 }, //  - start hour
-  { (int8_t *)&Settings.blankScreenFinishHr2,   2, 3,     0,   23,     6 }, //  - finish hour
-  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 1,     0,    3,     1 }, // cathode poisoning prevention (0 = off, 1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
+  { (int8_t *)&Settings.blankScreenFinishHr2,   2, 3,     0,   23,     5 }, //  - finish hour
+  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 1,     0,    3,     3 }, // cathode poisoning prevention (0 = off, 1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
   { (int8_t *)&Settings.cppStartHr,             3, 2,     0,   23,     4 }, //  - start hour
   { (int8_t *)&Settings.brightnessAutoAdjust,   4, 1, false, true,  true }, // brightness auto adjust
-  { (int8_t *)&Settings.brightnessBoost,        4, 2, false, true,  true }, //  - brighntess boost
+  { (int8_t *)&Settings.brightnessBoost,        4, 2, false, true, false }, //  - brighntess boost
   { (int8_t *)&Settings.dcfSyncEnabled,         5, 1, false, true,  true }, // DCF sync
   { (int8_t *)&Settings.dcfSignalIndicator,     5, 2, false, true,  true }, //  - signal indicator
   { (int8_t *)&Settings.dcfSyncHour,            5, 3,     0,   23,     3 }, //  - sync hour
