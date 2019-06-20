@@ -69,7 +69,10 @@
 #define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)
   
 // change the following value to force an uptime reset
-#define NIXIE_UPTIME_RESET_VAL 0xDEADBEEF     
+#define NIXIE_UPTIME_RESET_CODE 0xDEADBEEF    
+
+// upon the absence of this string in EEPROM all the settings will be reset to default
+#define SETTINGS_RESET_CODE 0xDEADBEEF
 
 
 
@@ -151,7 +154,7 @@ enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_WEEK_E, SHOW_ALARM_E, SHOW_
 struct Settings_t {
   volatile uint32_t timer1Period = TIMER1_DEFUALT_PERIOD;  // stores the period of Timer1 in microseconds
   volatile uint32_t nixieUptime;                   // stores the nixie tube uptime in seconds
-  uint32_t nixieUptimeResetCode;                   // uptime is reset to zero if this value is different than 0xDEADBEEF
+  uint32_t nixieUptimeResetCode;                   // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
   bool dcfSyncEnabled;                             // enables DCF77 synchronization feature
   bool dcfSignalIndicator;                         // enables the live DCF77 signal strength indicator (blinking decimal point on digit 0)
   uint8_t dcfSyncHour;                             // hour of day when DCF77 sync shall start
@@ -167,7 +170,8 @@ struct Settings_t {
   uint8_t blankScreenMode2;                        // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
   uint8_t blankScreenStartHr2;                     // start hour for disabling the display (second profile)
   uint8_t blankScreenFinishHr2;                    // finish hour for disabling the display (second profile)
-  uint8_t reserved1[5];                            // reserved for future use
+  uint8_t reserved1[1];                            // reserved for future use
+  uint32_t settingsResetCode;                      // all settings will be reset to default if this value is different than the value of SETTINGS_RESET_CODE
   AlarmEeprom_s alarm;                             // alarm clock settings
   int8_t weekStartDay;                             // the first day of a calendar week (1 = Monday, 7 = Sunday)
   uint8_t reserved2[3];                            // reserved for future use
@@ -291,12 +295,22 @@ void setup() {
   if (Settings.timer1Period < TIMER1_DEFUALT_PERIOD - 10000 ||
       Settings.timer1Period > TIMER1_DEFUALT_PERIOD + 10000) Settings.timer1Period = TIMER1_DEFUALT_PERIOD;
 
-  // reset nixie tube uptime on initial start
-  if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_VAL) {
+  // reset nixie tube uptime on first-time boot
+  if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_CODE) {
     Settings.nixieUptime = NIXIE_UPTIME_INIT_VAL;
-    Settings.nixieUptimeResetCode = NIXIE_UPTIME_RESET_VAL;
+    Settings.nixieUptimeResetCode = NIXIE_UPTIME_RESET_CODE;
     PRINTLN ("[setup] nixieUptime initialized");
   }
+
+  // reset all settings on first-time boot
+  if (Settings.settingsResetCode != SETTINGS_RESET_CODE) {
+    for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
+      *SettingsLut[i].value = SettingsLut[i].defaultVal;
+      Settings.settingsResetCode = SETTINGS_RESET_CODE;
+      PRINTLN ("[setup] settings initialized");
+    }
+  }
+  
   PRINTLN ("[setup] other:");
   // validate settings loaded from EEPROM
   for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
