@@ -24,7 +24,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "features.h"
+#include "Features.h"
 
 #define TIMER_ALARM_DURATION      (10 * 60000)
 #define ALARM_ALARM_DURATION      (30 * 60000)
