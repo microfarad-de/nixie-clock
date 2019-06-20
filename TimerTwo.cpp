@@ -10,7 +10,7 @@
  *
  */
 
-#include "timer-two.h"
+#include "TimerTwo.h"
 
 #define RESOLUTION 256    // Timer2 is 8 bit
 

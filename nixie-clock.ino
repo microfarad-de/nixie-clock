@@ -54,15 +54,15 @@
 #include <avr/sleep.h>
 #include <avr/power.h>
 #include <avr/wdt.h>
-#include "timer-one.h"
-#include "timer-two.h"
-#include "dcf.h"
-#include "nixie.h"
-#include "adc.h"
-#include "brightness.h"
-#include "helper.h"
-#include "features.h"
-//#include "build-date.h"
+#include "TimerOne.h"
+#include "TimerTwo.h"
+#include "Dcf.h"
+#include "Nixie.h"
+#include "Adc.h"
+#include "Brightness.h"
+#include "Helper.h"
+#include "Features.h"
+//#include "BuildDate.h"
 
 
 // reset the Nixie tube uptime to this value in seconds upon booting for the very first time
@@ -266,7 +266,7 @@ void setup() {
   PRINTLN (" ");
 
   // initialize the ADC
-  ADConv.initialize (ADC_PRESCALER_128, ADC_DEFAULT);
+  Adc.initialize (ADC_PRESCALER_128, ADC_DEFAULT);
 
   // initialize the Nixie tube display
   Nixie.initialize ( NIXIE_MAX_NUM_TUBES,
@@ -789,10 +789,10 @@ void adcRead (void) {
   uint8_t val;
   
   // start ADC for the current button (will be ignored if already started)
-  ADConv.start (Main.analogPin[chanIdx]);
+  Adc.start (Main.analogPin[chanIdx]);
 
   // check if ADC finished detecting the value
-  adcVal = ADConv.readVal ();
+  adcVal = Adc.readVal ();
  
   // ADC finished
   if (adcVal >= 0) {
