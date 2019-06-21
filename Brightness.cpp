@@ -94,6 +94,12 @@ uint8_t BrightnessClass::increase (void) {
 uint8_t BrightnessClass::decrease (void) {
   int16_t val = (int16_t)lut[lutIdx];
   val--;
+  if (boostEnabled) {
+    if (val >= TOTAL_STEPS) val = TOTAL_STEPS - 1;
+  }
+  else {
+    if (val >= PWM_STEPS) val = PWM_STEPS - 1;
+  }
   if (val < 0) val = 0;
   lut[lutIdx] = (uint8_t)val;
   if (autoEnabled) interpolate ();
