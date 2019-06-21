@@ -103,7 +103,7 @@ uint8_t BrightnessClass::decrease (void) {
 
 void BrightnessClass::interpolate (void) {
   int16_t i, val, prevVal;
-  for (i = lutIdx - 1; i >= 1 ; i--) { // lutIdx 0 is us used for deactivated auto-brightness
+  for (i = lutIdx - 1; i >= 1 ; i--) { // lutIdx 0 is used when auto-brightness is deactivated
     val = (int16_t)lut[i];
     prevVal = (int16_t)lut[i+1];
     if (val < prevVal + AUTOADJUST_MIN_STEP) val = prevVal + AUTOADJUST_MIN_STEP;
