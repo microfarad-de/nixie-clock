@@ -52,6 +52,11 @@ class BrightnessClass {
     void initialize (uint16_t eepromAddr, uint8_t boostPin = 0);
 
     /*
+     * Initialize the brightness LUT on first-time boot
+     */
+    void initializeLut (void);
+
+    /*
      * Enables/disables the auto brightness feature
      * Parameters:
      *   enable : true/false

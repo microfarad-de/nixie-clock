@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.2.0
+ * Version: 3.3.0
  * Date:    June 2019
  */
 #define VERSION_MAJOR 3  // Major version
-#define VERSION_MINOR 2  // Minor version
+#define VERSION_MINOR 3  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -304,6 +304,11 @@ void setup() {
 
   // reset all settings on first-time boot
   if (Settings.settingsResetCode != SETTINGS_RESET_CODE) {
+    Brightness.initializeLut ();
+    Settings.alarm.minute = 0;
+    Settings.alarm.hour = 0;
+    Settings.alarm.mode = ALARM_OFF;
+    Settings.alarm.lastMode = ALARM_OFF;
     for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
       *SettingsLut[i].value = SettingsLut[i].defaultVal;
       Settings.settingsResetCode = SETTINGS_RESET_CODE;
