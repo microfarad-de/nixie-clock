@@ -279,6 +279,12 @@ void setup() {
           ANODE0_PIN, ANODE1_PIN, ANODE2_PIN, ANODE3_PIN, ANODE4_PIN, ANODE5_PIN,
           BCD0_PIN, BCD1_PIN, BCD2_PIN, BCD3_PIN, COMMA_PIN, &Main.timeDigits);
   
+  // initialize the brightness control algorithm
+  Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
+
+  // initilaize the DCF77 receiver
+  DCF.initialize (DCF_PIN, FALLING, INPUT);
+  
   // reset system time
   set_system_time (0);
   sysTime = time (NULL);
@@ -349,13 +355,6 @@ void setup() {
   Main.timer2SecCounter = 0; 
   Main.timer2TenthCounter = 0;
   
-
-  // initilaize the DCF77 receiver
-  DCF.initialize (DCF_PIN, FALLING, INPUT);
-
-  // initialize the brightness control algorithm
-  Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
-  Brightness.autoEnable (Settings.brightnessAutoAdjust);
  
 #ifndef SERIAL_DEBUG
   // initialize the Buzzer driver (requires serial communication pin)
@@ -364,7 +363,10 @@ void setup() {
   Brightness.boostEnable (Settings.brightnessBoost);
 #endif
 
-  // initialize the alarm, countdown timer and stopwatch objects
+  // apply auto brightness setting
+  Brightness.autoEnable (Settings.brightnessAutoAdjust);
+
+  // initialize the alarm, countdown timer and stopwatch
   Alarm.initialize (&Settings.alarm);
   CdTimer.initialize (featureCallback);
   Stopwatch.initialize (featureCallback);
