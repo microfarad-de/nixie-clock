@@ -49,7 +49,7 @@
 
 
 void dcfIsr (void);
-DcfClass DCF;
+DcfClass Dcf;
 
 
 /***********************************
@@ -83,6 +83,9 @@ void DcfClass::initialize (uint8_t dcfPin, uint8_t bitStart, uint8_t dcfPinMode)
 uint8_t DcfClass::getTime ( void) {
   
   uint8_t rv = 41;
+  cli();
+  DcfBit_e bit = dcfBit;
+  sei();
   
   // too many bits -> restart
   if (idx >= DCF_BIT_COUNT) { 
@@ -92,12 +95,14 @@ uint8_t DcfClass::getTime ( void) {
     rv = 31;
   }
   // synchronization bit detected
-  else if (dcfBit == DCF_BIT_SYNC) { 
+  else if (bit == DCF_BIT_SYNC) { 
 
     // full word of 59 bits received -> verify
     if (idx == DCF_BIT_COUNT - 1) { 
       bits[idx] = DCF_BIT_LOW;
+      cli();
       dcfBit = DCF_BIT_NONE;
+      sei();
       lastBit = DCF_BIT_SYNC;
       rv = verify();
       PRINT   ("full word... idx = ");
@@ -107,8 +112,10 @@ uint8_t DcfClass::getTime ( void) {
       idx = 0;
     } 
     // too few bits -> restart
-    else { 
+    else {
+      cli();
       dcfBit = DCF_BIT_NONE;
+      sei();
       lastBit = DCF_BIT_SYNC;
       PRINT   ("few bits... idx = ");
       PRINTLN (idx, DEC);
@@ -117,10 +124,12 @@ uint8_t DcfClass::getTime ( void) {
     }
   }
   // received a new bit
-  else if (dcfBit == DCF_BIT_HIGH || dcfBit == DCF_BIT_LOW) { 
-    bits[idx] = dcfBit;
-    lastBit = dcfBit;
+  else if (bit == DCF_BIT_HIGH || bit == DCF_BIT_LOW) { 
+    bits[idx] = bit;
+    lastBit = bit;
+    cli();
     dcfBit = DCF_BIT_NONE; 
+    sei();
     idx++; 
     lastIdx = idx; 
     rv = 33;        
@@ -174,26 +183,26 @@ void dcfIsr () {
   uint8_t dcfPinValue; 
   
   ts = millis ();
-  dcfPinValue = digitalRead (DCF.dcfPin);
-  DCF.lastIrqTrigger = dcfPinValue;   // store the value of of input pin for later use
+  dcfPinValue = digitalRead (Dcf.dcfPin);
+  Dcf.lastIrqTrigger = dcfPinValue;   // store the value of of input pin for later use
   
-  if (dcfPinValue == DCF.startEdge) { 
-    delta = ts - DCF.startEdgeTs;                                   // measure distance between consecutive falling edges
+  if (dcfPinValue == Dcf.startEdge) { 
+    delta = ts - Dcf.startEdgeTs;                                   // measure distance between consecutive falling edges
     if      (delta > 2050) { ISR_PRINT }                            // not valid but needed for avoiding deadlock
-    else if (delta > 1950) { DCF.dcfBit = DCF_BIT_SYNC; ISR_PRINT } // no falling edge for 2s = sync
+    else if (delta > 1950) { Dcf.dcfBit = DCF_BIT_SYNC; ISR_PRINT } // no falling edge for 2s = sync
     else if (delta > 1050) { return; }
     else if (delta > 950)  { ISR_PRINT }                            // expected falling edge every 1s
     else                   { return; }
-    DCF.startEdgeTs = ts;
-    DCF.rxFlag = 0; 
+    Dcf.startEdgeTs = ts;
+    Dcf.rxFlag = 0; 
   }
   else { 
-    delta = ts - DCF.startEdgeTs;                                                 // measure pulse width
-    if  (DCF.rxFlag == 1) { return; }                                             // reject any subsequent pulses until the next bit starts
+    delta = ts - Dcf.startEdgeTs;                                                 // measure pulse width
+    if  (Dcf.rxFlag == 1) { return; }                                             // reject any subsequent pulses until the next bit starts
     /* else if (delta > 260) { return; } */
-    else if (delta > 175) { DCF.dcfBit = DCF_BIT_HIGH; DCF.rxFlag = 1; ISR_PRINT} // 200ms pulse width = 1
+    else if (delta > 175) { Dcf.dcfBit = DCF_BIT_HIGH; Dcf.rxFlag = 1; ISR_PRINT} // 200ms pulse width = 1
     /* else if (delta > 160) { return; } */
-    else if (delta >  50) { DCF.dcfBit = DCF_BIT_LOW;  DCF.rxFlag = 1; ISR_PRINT} // 100ms pulse width = 0
+    else if (delta >  50) { Dcf.dcfBit = DCF_BIT_LOW;  Dcf.rxFlag = 1; ISR_PRINT} // 100ms pulse width = 0
     else                  { return; }
   } 
 }

@@ -141,6 +141,6 @@ class DcfClass {
 /*
  * DCF class is instantiated as a singleton
  */
-extern DcfClass DCF;
+extern DcfClass Dcf;
 
 #endif // __DCF_H

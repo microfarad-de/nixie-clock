@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.3.0
- * Date:    June 2019
+ * Version: 3.3.1
+ * Date:    July 2019
  */
 #define VERSION_MAJOR 3  // Major version
 #define VERSION_MINOR 3  // Minor version
-#define VERSION_MAINT 0  // Maintenance version
+#define VERSION_MAINT 1  // Maintenance version
 
 
 
@@ -117,21 +117,21 @@
 #define BRIGHTNESS_PIN 0
 
 // analog pins
-#define NUM_APINS  5        // total number of hardware analog pins in use for non-blocking ADC 
-#define BUTTON0_APIN A2     // button 0 - "mode"
-#define BUTTON1_APIN A3     // button 1 - "increase"
-#define BUTTON2_APIN A1     // button 2 - "decrease"
-#define LIGHTSENS_APIN A0   // light sensor
-#define EXTPWR_APIN A6      // measures external power voltage
-#define VOLTAGE_APIN A7     // measures the retention super capacitor voltage
+#define NUM_APINS      5   // total number of hardware analog pins in use for non-blocking ADC 
+#define BUTTON0_APIN   A2  // button 0 - "mode"
+#define BUTTON1_APIN   A3  // button 1 - "increase"
+#define BUTTON2_APIN   A1  // button 2 - "decrease"
+#define LIGHTSENS_APIN A0  // light sensor
+#define EXTPWR_APIN    A6  // measures external power voltage
+#define VOLTAGE_APIN   A7  // measures the retention super capacitor voltage
 
 // various constants
-#define TIMER1_DEFUALT_PERIOD 1000000            // default period for Timer1 in us (1 second)
-#define WDT_TIMEOUT WDTO_4S                      // watcchdog timer timeout setting
-#define EEPROM_SETTINGS_ADDR 0                   // EEPROM address of the settngs structure
-#define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
-#define MENU_ORDER_LIST_SIZE 3                   // size of the dynamic menu ordering list
-#define SETTINGS_LUT_SIZE 15                     // size of the settings lookup table
+#define TIMER1_DEFUALT_PERIOD  1000000       // default period for Timer1 in us (1 second)
+#define WDT_TIMEOUT            WDTO_4S       // watcchdog timer timeout setting
+#define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
+#define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
+#define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
+#define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
 
 // conversion macros
 #define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
@@ -283,7 +283,7 @@ void setup() {
   Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
 
   // initilaize the DCF77 receiver
-  DCF.initialize (DCF_PIN, FALLING, INPUT);
+  Dcf.initialize (DCF_PIN, FALLING, INPUT);
   
   // reset system time
   set_system_time (0);
@@ -475,7 +475,7 @@ void loop() {
 
   // toggle the decimal point for the DCF signal indicator 
   if (Settings.dcfSyncEnabled) {  
-    Nixie.comma[1] = Main.dcfSyncActive && (DCF.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
+    Nixie.comma[1] = Main.dcfSyncActive && (Dcf.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
   }
   else {
     Nixie.comma[1] = false; 
@@ -633,21 +633,21 @@ void syncToDCF () {
   // enable DCF77 pin interrupt
   if (Settings.dcfSyncEnabled && Main.dcfSyncActive) {
     if (!enabledCondition) {
-      DCF.resumeReception ();
+      Dcf.resumeReception ();
       PRINTLN ("[syncToDcf] resume");
       enabledCondition = true;
     }
   }
   else {
     if (enabledCondition) {
-      DCF.pauseReception ();
+      Dcf.pauseReception ();
       PRINTLN ("[syncToDcf] pause");
       enabledCondition = false;
     }  
   }
   
   // read DCF77 time
-  rv = DCF.getTime ();
+  rv = Dcf.getTime ();
 
   Nixie.refresh ();  // refresh the Nixie tube display
 
@@ -657,7 +657,7 @@ void syncToDCF () {
     deltaMs = millis () - Main.secTickMsStamp;   // milliseconds elapsed since the last full second
     sysTime = time (NULL);                       // get the current system time 
     sei();                                       // re-enable interrupts  
-    dcfTime = mktime (&DCF.currentTm);           // get the DCF77 timestamp                     
+    dcfTime = mktime (&Dcf.currentTm);           // get the DCF77 timestamp                     
     
     delta = (int32_t)(sysTime - dcfTime);               // time difference between the system time and DCF77 time in seconds     
     deltaMs = delta * 1000  + deltaMs;                  // above time difference in milliseconds
@@ -696,27 +696,27 @@ void syncToDCF () {
   // debug printing
   // timestamp validation failed
   if (rv < 31) {
-    PRINT   ("[syncToDCF] DCF.getTime=");
+    PRINT   ("[syncToDCF] Dcf.getTime=");
     PRINTLN (rv, DEC);
     if (rv == 0) {
       PRINT   ("[syncToDCF] delta=");
       PRINTLN (delta, DEC);
     }
     PRINT ("[syncToDCF] ");
-    PRINT   (asctime (&DCF.currentTm));
+    PRINT   (asctime (&Dcf.currentTm));
     PRINTLN (" *");
   }
   // sync bit has been missed, bits buffer overflow
   else if (rv == 31) {
     PRINT   ("[syncToDCF] many bits=");
-    PRINTLN (DCF.lastIdx, DEC);
-    DCF.lastIdx = 0;
+    PRINTLN (Dcf.lastIdx, DEC);
+    Dcf.lastIdx = 0;
   }
   // missed bits or false sync bit detected
   else if (rv == 32) {
     PRINT   ("[syncToDCF] few bits=");
-    PRINTLN (DCF.lastIdx, DEC);
-    DCF.lastIdx = 0;
+    PRINTLN (Dcf.lastIdx, DEC);
+    Dcf.lastIdx = 0;
   }
 
 #endif
