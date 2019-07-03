@@ -1,6 +1,6 @@
 # Nixie Clock
 
-This is the C++ firmware source code of the DCF77 radio-controlled Nixie Clock. The full description of this project can be found on www.microfarad.de/nixie-clock.
+This is the C++ firmware source code of the DCF77 radio-controlled Nixie tube clock. The full description of this project can be found on www.microfarad.de/nixie-clock.
 
 The contents of this repository are organized as an Aduino project, meant to be compiled using the Arduino IDE.
 
