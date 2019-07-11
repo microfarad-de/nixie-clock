@@ -1429,7 +1429,6 @@ void settingsMenu (void) {
           uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
           valueDigits.numDigits = 12;
           valueDigits.value[11] = idx + 1;
-          valueDigits.comma[11] = true;
           valueDigits.comma[10] = true;
           valueDigits.blank[10] = true;
           if (idx < NUM_DEBUG_VALUES)  {   
