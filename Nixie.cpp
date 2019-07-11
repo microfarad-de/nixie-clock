@@ -227,23 +227,23 @@ void NixieClass::enable (bool enable) {
 }
 
 void NixieClass::dec2bcd (uint32_t value, NixieDigits_s* output, uint8_t numDigits) {
-  int8_t i, n;
+  uint8_t i, n;
   uint64_t p = 1;
   //bool leadingZero = true; 
   
   if (numDigits > NIXIE_DIGIT_BUF_SIZE) numDigits = NIXIE_DIGIT_BUF_SIZE;
-  n = (int8_t)numDigits;
+  n = numDigits;
 
   for (i = 0; i < n; i++) output->value[i] = 0;
   for (i = 0; i < n; i++) p = p * 10;    
 
   while (value >= p) value -= p;
 
-  for (i = n - 1; i >= 0; i--) {
+  for (i = 0; i < n; i++) {
     p = p / 10;
     while (value >= p) {
       value -= p;
-      output->value[i]++;
+      output->value[n - i - 1]++;
     }
     //if (output->value[i] > 0) leadingZero = false;
     //if (leadingZero) output->blank[i] = true;

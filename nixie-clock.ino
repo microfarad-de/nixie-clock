@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.3.1
+ * Version: 3.3.2
  * Date:    July 2019
  */
 #define VERSION_MAJOR 3  // Major version
 #define VERSION_MINOR 3  // Minor version
-#define VERSION_MAINT 1  // Maintenance version
+#define VERSION_MAINT 2  // Maintenance version
 
 
 
@@ -132,6 +132,9 @@
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
+#define NUM_DEBUG_VALUES       7             // total number of debug values shown in the service menu
+#define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)   // total number of values inside the service menu
+
 
 // conversion macros
 #define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
@@ -239,6 +242,8 @@ class MainClass {
     // dynamically defines the order of the menu items
     MenuState_e menuOrder[MENU_ORDER_LIST_SIZE] = 
        { SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E }; 
+
+    int32_t debugValue[NUM_DEBUG_VALUES];            // values used for general purpose debugging
     
 } Main;
 
@@ -370,7 +375,15 @@ void setup() {
   Alarm.initialize (&Settings.alarm);
   CdTimer.initialize (featureCallback);
   Stopwatch.initialize (featureCallback);
-  
+
+  // initialize the debug values
+  for (i = 0; i < NUM_DEBUG_VALUES; i++) {
+    Main.debugValue[i] = (int32_t)111111111 * (i + 1);
+    if (i % 2 == 0) {
+      Main.debugValue[i] = -Main.debugValue[i];
+    }
+  }
+
   // enable the watchdog
   wdt_enable (WDT_TIMEOUT);
 }
@@ -626,7 +639,7 @@ void syncToDCF () {
   static bool enabledCondition = true;
   static int32_t lastDelta = 0;
   uint8_t rv;
-  int32_t delta, deltaMs;
+  int32_t delta, deltaMs, ms;
   time_t timeSinceLastSync;
   time_t sysTime, dcfTime;
 
@@ -654,13 +667,13 @@ void syncToDCF () {
   // DCF77 time has been successfully decoded
   if (Main.dcfSyncActive && rv == 0) {
     cli ();                                      // enter critical section by disabling interrupts
-    deltaMs = millis () - Main.secTickMsStamp;   // milliseconds elapsed since the last full second
+    ms = millis () - Main.secTickMsStamp;        // milliseconds elapsed since the last full second
     sysTime = time (NULL);                       // get the current system time 
     sei();                                       // re-enable interrupts  
     dcfTime = mktime (&Dcf.currentTm);           // get the DCF77 timestamp                     
     
     delta = (int32_t)(sysTime - dcfTime);               // time difference between the system time and DCF77 time in seconds     
-    deltaMs = delta * 1000  + deltaMs;                  // above time difference in milliseconds
+    deltaMs = delta * 1000  + ms;                       // above time difference in milliseconds
     timeSinceLastSync = dcfTime - Main.lastDcfSyncTime; // time elapsed since the last successful DCF77 synchronization in seconds
     
     // if no big time deviation was detected or 
@@ -673,9 +686,19 @@ void syncToDCF () {
       sei ();                                      
       Main.lastDcfSyncTime = dcfTime;              // remember last sync time
       Main.dcfSyncActive = false;                  // pause DCF77 reception
+        
 
       // calibrate timer1 to compensate for crystal drift
       if (abs (delta) < 60 && timeSinceLastSync > 3600 && !Main.manuallyAdjusted && !coldStart) {
+        // TODO: for debugging the calibration inaccuracy issue
+        if (NUM_DEBUG_VALUES >= 6) {
+          Main.debugValue[0] = (int32_t)timeSinceLastSync;
+          Main.debugValue[1] = (int32_t)sysTime;
+          Main.debugValue[2] = (int32_t)dcfTime;
+          Main.debugValue[3] = delta;
+          Main.debugValue[4] = ms; 
+          Main.debugValue[5] = deltaMs;
+        }
         timerCalibrate (timeSinceLastSync, deltaMs);     
       }
 
@@ -735,6 +758,11 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
 
   errorPPM = (timeOffsetMs * 1000) / (int32_t)measDuration;
 
+  // TODO: for debugging the calibration inaccuracy issue
+  if (NUM_DEBUG_VALUES >= 7) {
+    Main.debugValue[6] = errorPPM;
+  }
+  
   cli ();
   Settings.timer1Period += errorPPM;
   sei ();
@@ -1357,22 +1385,21 @@ void settingsMenu (void) {
         Nixie.cancelScroll ();
         Nixie.resetDigits (&valueDigits);
         if      (Button[1].pressed) {
-          vIdx++; if (vIdx > 2) vIdx = 0;
+          vIdx++; if (vIdx >= NUM_SERVICE_VALUES) vIdx = 0;
         }
         else if (Button[2].pressed) {
-          vIdx--; if (vIdx < 0) vIdx = 2;
+          vIdx--; if (vIdx < 0) vIdx = NUM_SERVICE_VALUES - 1;
         }
         SHOW_SERVICE_ENTRY_POINT:
-        // show Nixie tube uptime
+        // show Timer1 period (default)
         if (vIdx == 0) {
           valueDigits.numDigits = 9;
           Nixie.dec2bcd (Settings.timer1Period, &valueDigits, 7);
           valueDigits.value[8] = 1;
           valueDigits.comma[8] = true;
           valueDigits.blank[7] = true;
-          Nixie.scroll (); 
         }
-        // show firmware version
+        // show Nixie tube uptime
         else if (vIdx == 1) {
           valueDigits.numDigits = 8;
           cli ();
@@ -1381,9 +1408,8 @@ void settingsMenu (void) {
           valueDigits.value[7] = 2;
           valueDigits.comma[7] = true;
           valueDigits.blank[6] = true;
-          Nixie.scroll ();   
         }
-        // show Timer1 period (default)
+        // show firmware version
         else if (vIdx == 2) {
           valueDigits.numDigits = 8;
           valueDigits.value[7] = 3;
@@ -1396,9 +1422,31 @@ void settingsMenu (void) {
           valueDigits.value[2]  = dec2bcdLow (VERSION_MINOR);
           valueDigits.comma[2] = true;    
           valueDigits.value[1]  = dec2bcdHigh (VERSION_MAINT);
-          valueDigits.value[0]  = dec2bcdLow (VERSION_MAINT);
-          Nixie.scroll (); 
+          valueDigits.value[0]  = dec2bcdLow (VERSION_MAINT);  
         }   
+        // show the Debug values
+        else if (vIdx > 2 && vIdx < NUM_SERVICE_VALUES) {
+          uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
+          valueDigits.numDigits = 12;
+          valueDigits.value[11] = idx + 1;
+          valueDigits.comma[11] = true;
+          valueDigits.comma[10] = true;
+          valueDigits.blank[10] = true;
+          if (idx < NUM_DEBUG_VALUES)  {   
+            if (Main.debugValue[idx] < 0) {
+              Nixie.dec2bcd ((uint32_t)(-Main.debugValue[idx]), &valueDigits, 10);
+              for (i = 0; i < 10; i++) valueDigits.comma[i] = true;
+            }
+            else {
+              Nixie.dec2bcd ((uint32_t)Main.debugValue[idx], &valueDigits, 10);
+            }
+          }
+          else {
+            Nixie.dec2bcd (0, &valueDigits, 10);
+          }
+        }
+
+        Nixie.scroll ();
       }
       // scroll the display every x seconds
       if (ts - bannerTs > 6000) Nixie.scroll (), bannerTs = ts; 
