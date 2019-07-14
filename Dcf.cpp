@@ -258,7 +258,7 @@ uint8_t DcfClass::verify (void) {
   currentTm.tm_mon = month - 1;   // months since January - [ 0 to 11 ]
   currentTm.tm_year = year + 100; // years since 1900
   //currentTm.tm_yday;            // days since January 1 - [ 0 to 365 ]
-  //currentTm.tm_isdst = cest;      // Daylight Saving Time flag
+  //currentTm.tm_isdst = cest;    // Daylight Saving Time flag
   
   // sanity checks
   if (bits[0] != 0)  return 1;

@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.3.2
+ * Version: 3.4.0
  * Date:    July 2019
  */
 #define VERSION_MAJOR 3  // Major version
-#define VERSION_MINOR 3  // Minor version
-#define VERSION_MAINT 2  // Maintenance version
+#define VERSION_MINOR 4  // Minor version
+#define VERSION_MAINT 0  // Maintenance version
 
 
 
@@ -65,19 +65,10 @@
 //#include "BuildDate.h"
 
 
-// reset the Nixie tube uptime to this value in seconds upon booting for the very first time
-#define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)
-  
-// change the following value to force an uptime reset
-#define NIXIE_UPTIME_RESET_CODE 0xDEADBEEF    
+#define VALUE_DEBUG         // activate the debug values within the service menu
 
-// upon the absence of this string in EEPROM all the settings will be reset to default
-#define SETTINGS_RESET_CODE 0xDEADBEEF
-
-
-
-//#define SERIAL_DEBUG              // activate debug printing over RS232
-#define SERIAL_BAUD 115200          // serial baud rate
+//#define SERIAL_DEBUG      // activate debug printing over RS232
+#define SERIAL_BAUD 115200  // serial baud rate
 
 // use these macros for printing to serial port
 #ifdef SERIAL_DEBUG  
@@ -88,6 +79,15 @@
   #define PRINTLN(...)
 #endif
 
+
+// reset the Nixie tube uptime to this value in seconds upon booting for the very first time
+#define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)
+  
+// change the following value to force an uptime reset
+#define NIXIE_UPTIME_RESET_CODE 0xDEADBEEF    
+
+// upon the absence of this string in EEPROM all the settings will be reset to default
+#define SETTINGS_RESET_CODE 0xDEADBEEF
 
 
 // anode control pins
@@ -132,7 +132,8 @@
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
-#define NUM_DEBUG_VALUES       8             // total number of debug values shown in the service menu
+#define NUM_DEBUG_VALUES       7             // total number of debug values shown in the service menu
+#define NUM_DEBUG_DIGITS       6             // number of digits for the debug values shown in the service menu
 #define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)   // total number of values inside the service menu
 
 
@@ -156,28 +157,28 @@ enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_WEEK_E, SHOW_ALARM_E, SHOW_
  */
 struct Settings_t {
   volatile uint32_t timer1Period = TIMER1_DEFUALT_PERIOD;  // stores the period of Timer1 in microseconds
-  volatile uint32_t nixieUptime;                   // stores the nixie tube uptime in seconds
-  uint32_t nixieUptimeResetCode;                   // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
-  bool dcfSyncEnabled;                             // enables DCF77 synchronization feature
-  bool dcfSignalIndicator;                         // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
-  uint8_t dcfSyncHour;                             // hour of day when DCF77 sync shall start
-  uint8_t blankScreenMode;                         // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
-  uint8_t blankScreenStartHr;                      // start hour for disabling the display
-  uint8_t blankScreenFinishHr;                     // finish hour for disabling the display
-  uint8_t cathodePoisonPrevent;                    // enables cathode poisoning prevention measure by cycling through all digits (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
-  uint8_t cppStartHr;                              // start hour for the cathode poisoning prevention measure
-  int8_t secPerDayCorrect;                         // manual Timer1 drift correction in seconds per day
-  uint8_t reserved0;                               // reserved for future use
-  bool brightnessAutoAdjust;                       // enables the brightness auto-adjustment feature
-  bool brightnessBoost;                            // enables the brightness boosting feature
-  uint8_t blankScreenMode2;                        // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
-  uint8_t blankScreenStartHr2;                     // start hour for disabling the display (second profile)
-  uint8_t blankScreenFinishHr2;                    // finish hour for disabling the display (second profile)
-  uint8_t reserved1[1];                            // reserved for future use
-  uint32_t settingsResetCode;                      // all settings will be reset to default if this value is different than the value of SETTINGS_RESET_CODE
-  AlarmEeprom_s alarm;                             // alarm clock settings
-  int8_t weekStartDay;                             // the first day of a calendar week (1 = Monday, 7 = Sunday)
-  uint8_t reserved2[3];                            // reserved for future use
+  volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
+  uint32_t nixieUptimeResetCode;  // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
+  bool dcfSyncEnabled;            // enables DCF77 synchronization feature
+  bool dcfSignalIndicator;        // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
+  uint8_t dcfSyncHour;            // hour of day when DCF77 sync shall start
+  uint8_t blankScreenMode;        // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
+  uint8_t blankScreenStartHr;     // start hour for disabling the display
+  uint8_t blankScreenFinishHr;    // finish hour for disabling the display
+  uint8_t cathodePoisonPrevent;   // enables cathode poisoning prevention measure by cycling through all digits (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
+  uint8_t cppStartHr;             // start hour for the cathode poisoning prevention measure
+  int8_t secPerDayCorrect;        // manual Timer1 drift correction in seconds per day
+  uint8_t reserved0;              // reserved for future use
+  bool brightnessAutoAdjust;      // enables the brightness auto-adjustment feature
+  bool brightnessBoost;           // enables the brightness boosting feature
+  uint8_t blankScreenMode2;       // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
+  uint8_t blankScreenStartHr2;    // start hour for disabling the display (second profile)
+  uint8_t blankScreenFinishHr2;   // finish hour for disabling the display (second profile)
+  uint8_t reserved1[1];           // reserved for future use
+  uint32_t settingsResetCode;     // all settings will be reset to default if this value is different than the value of SETTINGS_RESET_CODE
+  AlarmEeprom_s alarm;            // alarm clock settings
+  int8_t weekStartDay;            // the first day of a calendar week (1 = Monday, 7 = Sunday)
+  uint8_t reserved2[3];           // reserved for future use
 } Settings;
 
 
@@ -244,9 +245,9 @@ struct {
     MenuState_e menuOrder[MENU_ORDER_LIST_SIZE] = 
        { SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E }; 
 
-    int32_t debugValue[NUM_DEBUG_VALUES];            // values used for general purpose debugging
+    int32_t debugValue[NUM_DEBUG_VALUES];          // values used for general purpose debugging
     
-} Main;
+} G;
 
 /*
  * Various objects
@@ -283,7 +284,7 @@ void setup() {
   // initialize the Nixie tube display
   Nixie.initialize ( NIXIE_MAX_NUM_TUBES,
           ANODE0_PIN, ANODE1_PIN, ANODE2_PIN, ANODE3_PIN, ANODE4_PIN, ANODE5_PIN,
-          BCD0_PIN, BCD1_PIN, BCD2_PIN, BCD3_PIN, COMMA_PIN, &Main.timeDigits);
+          BCD0_PIN, BCD1_PIN, BCD2_PIN, BCD3_PIN, COMMA_PIN, &G.timeDigits);
   
   // initialize the brightness control algorithm
   Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
@@ -294,7 +295,7 @@ void setup() {
   // reset system time
   set_system_time (0);
   sysTime = time (NULL);
-  Main.systemTm = localtime (&sysTime);
+  G.systemTm = localtime (&sysTime);
 
   // retrieve system settings period from EEOROM
   eepromRead (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
@@ -358,8 +359,8 @@ void setup() {
   Timer2.stop ();
   Timer2.restart ();
   sei ();
-  Main.timer2SecCounter = 0; 
-  Main.timer2TenthCounter = 0;
+  G.timer2SecCounter = 0; 
+  G.timer2TenthCounter = 0;
   
  
 #ifndef SERIAL_DEBUG
@@ -377,13 +378,15 @@ void setup() {
   CdTimer.initialize (featureCallback);
   Stopwatch.initialize (featureCallback);
 
+  #ifdef VALUE_DEBUG
   // initialize the debug values
   for (i = 0; i < NUM_DEBUG_VALUES; i++) {
-    Main.debugValue[i] = (int32_t)111111111 * (i + 1);
+    G.debugValue[i] = (int32_t)111111111 * (i + 1);
     if (i % 2 == 0) {
-      Main.debugValue[i] = -Main.debugValue[i];
+      G.debugValue[i] = -G.debugValue[i];
     }
   }
+  #endif
 
   // enable the watchdog
   wdt_enable (WDT_TIMEOUT);
@@ -400,36 +403,36 @@ void loop() {
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
   
   // actions to be executed once every second
-  if (Main.timer1TickFlag) {
+  if (G.timer1TickFlag) {
     cli();
-    Main.systemTime     = time (NULL);    // get the current time
+    G.systemTime     = time (NULL);    // get the current time
     sei();
-    Main.systemTm       = localtime (&Main.systemTime);
-    Main.secTickMsStamp = millis ();
+    G.systemTm       = localtime (&G.systemTime);
+    G.secTickMsStamp = millis ();
     updateDigits ();                      // update the Nixie display digits 
-    Main.timer1TickFlag = false;    
+    G.timer1TickFlag = false;    
   }
                     
   lastHour = hour;
-  hour = Main.systemTm->tm_hour;
-  minute = Main.systemTm->tm_min;
-  wday = Main.systemTm->tm_wday;
+  hour = G.systemTm->tm_hour;
+  minute = G.systemTm->tm_min;
+  wday = G.systemTm->tm_wday;
 
   // start DCF77 reception at the specified hour
-  if (hour != lastHour && hour == Settings.dcfSyncHour) Main.dcfSyncActive = true;
+  if (hour != lastHour && hour == Settings.dcfSyncHour) G.dcfSyncActive = true;
 
   Nixie.refresh (); // refresh the Nixie tube display
                     // refresh method is called many times across the code to ensure smooth display operation
 
   // enable cathode poisoning prevention effect at a preset hour
-  if (Settings.cathodePoisonPrevent == 1 && hour == Settings.cppStartHr && Main.menuState != SET_HOUR) {
+  if (Settings.cathodePoisonPrevent == 1 && hour == Settings.cppStartHr && G.menuState != SET_HOUR) {
     if (!cppCondition) {
-      Main.cppEffectEnabled = true;
+      G.cppEffectEnabled = true;
       cppCondition = true;
     }  
   }
   else {
-    Main.cppEffectEnabled = false;  
+    G.cppEffectEnabled = false;  
     cppCondition = false;
   }
 
@@ -452,21 +455,21 @@ void loop() {
              ) &&
              (Settings.blankScreenMode2 != 2 || (wday >= 1 && wday <= 5) ) && (Settings.blankScreenMode2 != 3 || wday == 0 || wday == 6)
            )
-         ) && !Main.cppEffectEnabled
+         ) && !G.cppEffectEnabled
        )
      ) {
-    if (!blankCondition && Main.menuState == SHOW_TIME) {
-      Main.menuState = SHOW_BLANK_E;
+    if (!blankCondition && G.menuState == SHOW_TIME) {
+      G.menuState = SHOW_BLANK_E;
       blankCondition = true;
     }
     // re-enable blanking after switching to the service display /*or at the change of an hour*/ 
-    else if (Main.menuState == SHOW_SERVICE /*|| ( Main.menuState != SHOW_BLANK && Main.menuState != SET_HOUR && hour != lastHour)*/ ) {
+    else if (G.menuState == SHOW_SERVICE /*|| ( G.menuState != SHOW_BLANK && G.menuState != SET_HOUR && hour != lastHour)*/ ) {
       blankCondition = false;
     }
   }
   // disable blanking if blanking blankScreenMode != 4, CPP is enabled or outside the preset time intervals
-  else if (Main.menuState == SHOW_BLANK) {
-    Main.menuState = SHOW_TIME_E;
+  else if (G.menuState == SHOW_BLANK) {
+    G.menuState = SHOW_TIME_E;
     blankCondition = false;
   }
   // ensure that blankCondition is reset after blanking period elapses, even if not in blanking mode
@@ -477,7 +480,7 @@ void loop() {
   Nixie.refresh ();
 
   // write-back system settings to EEPROM every night
-  if (hour != lastHour && hour == 1 && Main.menuState != SET_HOUR) {
+  if (hour != lastHour && hour == 1 && G.menuState != SET_HOUR) {
       Nixie.blank ();
       eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
       Brightness.eepromWrite ();
@@ -488,7 +491,7 @@ void loop() {
 
   // toggle the decimal point for the DCF signal indicator 
   if (Settings.dcfSyncEnabled) {  
-    Nixie.comma[1] = Main.dcfSyncActive && (Dcf.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
+    Nixie.comma[1] = G.dcfSyncActive && (Dcf.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
   }
   else {
     Nixie.comma[1] = false; 
@@ -516,7 +519,7 @@ void loop() {
  
   Nixie.refresh ();
 
-  Alarm.loopHandler (hour, minute, wday, Main.menuState != SET_MIN && Main.menuState != SET_SEC);  // alarm clock loop handler
+  Alarm.loopHandler (hour, minute, wday, G.menuState != SET_MIN && G.menuState != SET_SEC);  // alarm clock loop handler
 
   Nixie.refresh ();
   
@@ -525,12 +528,12 @@ void loop() {
 
 #ifdef SERIAL_DEBUG  
   // print the current time
-  if (Main.printTickCount >= 15) {
+  if (G.printTickCount >= 15) {
     PRINT ("[loop] ");
-    PRINTLN (asctime (localtime (&Main.systemTime)));
+    PRINTLN (asctime (localtime (&G.systemTime)));
     //PRINT ("[loop] nixieUptime=");
     //PRINTLN (Settings.nixieUptime, DEC);
-    Main.printTickCount = 0;
+    G.printTickCount = 0;
   }
 #endif
 }
@@ -551,15 +554,15 @@ void timer1ISR () {
   if (Nixie.enabled) Settings.nixieUptime++;
 
   // to avoid race conditions, Timer1 period must be updated from within the ISR
-  if (Main.timer1PeriodUpdateFlag) {
+  if (G.timer1PeriodUpdateFlag) {
     Timer1.setPeriod (Settings.timer1Period);
-    Main.timer1PeriodUpdateFlag = false;
+    G.timer1PeriodUpdateFlag = false;
   }
 
-  Main.timer1TickFlag = true;
+  G.timer1TickFlag = true;
 
 #ifdef SERIAL_DEBUG  
-  Main.printTickCount++;
+  G.printTickCount++;
 #endif  
 }
 /*********/
@@ -571,26 +574,26 @@ void timer1ISR () {
  ***********************************/
 void timer2ISR () {
     
-  Main.timer2SecCounter++;
-  Main.timer2TenthCounter++;
+  G.timer2SecCounter++;
+  G.timer2TenthCounter++;
   
   // 1s period = 25ms * 40
-  if (Main.timer2SecCounter >= 40) {
+  if (G.timer2SecCounter >= 40) {
     CdTimer.tick ();
-    Main.timer2SecCounter = 0;
+    G.timer2SecCounter = 0;
   }
 
   // 1/10s period = 25ms * 4
-  if (Main.timer2TenthCounter >= 4) {
+  if (G.timer2TenthCounter >= 4) {
     Stopwatch.tick ();
-    Main.timer2TenthCounter = 0;
+    G.timer2TenthCounter = 0;
   }
 
   // to avoid race conditions, Timer2 period must be updated from within the ISR
-  if (Main.timer2PeriodUpdateFlag) {
+  if (G.timer2PeriodUpdateFlag) {
     // initialize Timer2, set the period to 25ms (1s / 40)
     Timer2.setPeriod (Settings.timer1Period / 40);
-    Main.timer2PeriodUpdateFlag = false;
+    G.timer2PeriodUpdateFlag = false;
   }
 }
 /*********/
@@ -618,8 +621,8 @@ void featureCallback (bool start) {
     Timer2.stop (); 
     Timer2.restart (); 
     sei (); 
-    Main.timer2SecCounter = 0; 
-    Main.timer2TenthCounter = 0;   
+    G.timer2SecCounter = 0; 
+    G.timer2TenthCounter = 0;   
   }
 }
 /*********/
@@ -643,7 +646,7 @@ void syncToDCF () {
   time_t sysTime, dcfTime;
 
   // enable DCF77 pin interrupt
-  if (Settings.dcfSyncEnabled && Main.dcfSyncActive) {
+  if (Settings.dcfSyncEnabled && G.dcfSyncActive) {
     if (!enabledCondition) {
       Dcf.resumeReception ();
       PRINTLN ("[syncToDcf] resume");
@@ -664,14 +667,14 @@ void syncToDCF () {
   Nixie.refresh ();  // refresh the Nixie tube display
 
   // DCF77 time has been successfully decoded
-  if (Main.dcfSyncActive && rv == 0) {
-    ms      = millis () - Main.secTickMsStamp;  // milliseconds elapsed since the last full second
-    sysTime = Main.systemTime;                  // get the current system time 
-    dcfTime = mktime (&Dcf.currentTm);          // get the DCF77 timestamp                     
+  if (G.dcfSyncActive && rv == 0) {
+    ms      = millis () - G.secTickMsStamp;  // milliseconds elapsed since the last full second
+    sysTime = G.systemTime;                  // get the current system time 
+    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp                     
     
-    delta   = (int32_t)(sysTime - dcfTime);              // time difference between the system time and DCF77 time in seconds     
-    deltaMs = delta * 1000  + ms;                        // above time difference in milliseconds
-    timeSinceLastSync = dcfTime - Main.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
+    delta   = (int32_t)(sysTime - dcfTime);           // time difference between the system time and DCF77 time in seconds     
+    deltaMs = delta * 1000  + ms;                     // above time difference in milliseconds
+    timeSinceLastSync = dcfTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
     
     // if no big time deviation was detected or 
     // two consecutive DCF77 timestamps produce a similar time deviation
@@ -679,38 +682,39 @@ void syncToDCF () {
     if (abs (delta) < 60 || abs (delta - lastDelta) < 60) {
 
       Timer1.stop ();
-      Timer1.restart ();               // reset the beginning of a second 
+      Timer1.restart ();              // reset the beginning of a second 
       cli ();
-      set_system_time (dcfTime - 1);   // apply the new system time, subtract 1s to compensate for initial tick
+      set_system_time (dcfTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
       sei ();
       Timer1.start ();
-      Main.lastDcfSyncTime = dcfTime;  // remember last sync time
-      Main.dcfSyncActive   = false;    // pause DCF77 reception
+      G.lastDcfSyncTime = dcfTime;    // remember last sync time
+      G.dcfSyncActive   = false;      // pause DCF77 reception
         
 
       // calibrate timer1 to compensate for crystal drift
-      if (abs (delta) < 60 /*&& timeSinceLastSync > 3600*/ && !Main.manuallyAdjusted && !coldStart) {
-        // TODO: for debugging the calibration inaccuracy issue
-        if (NUM_DEBUG_VALUES >= 7) {
-          Main.debugValue[0] = (int32_t)timeSinceLastSync;
-          Main.debugValue[1] = (int32_t)sysTime;
-          Main.debugValue[2] = (int32_t)dcfTime;
-          Main.debugValue[3] = (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec;
-          Main.debugValue[4] = delta;
-          Main.debugValue[5] = ms; 
-          Main.debugValue[6] = deltaMs;
+      if (abs (delta) < 60 && timeSinceLastSync > 1800 && !G.manuallyAdjusted && !coldStart) {
+        #ifdef VALUE_DEBUG
+        // for debugging the calibration inaccuracy issue
+        if (NUM_DEBUG_VALUES >= 6) {
+          G.debugValue[0] = (int32_t)timeSinceLastSync;
+          G.debugValue[1] = (int32_t)G.systemTm->tm_hour*10000 + (int32_t)G.systemTm->tm_min*100 + (int32_t)G.systemTm->tm_sec;
+          G.debugValue[2] = (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec;
+          G.debugValue[3] = delta;
+          G.debugValue[4] = ms; 
+          G.debugValue[5] = deltaMs;
         }
+        #endif
         timerCalibrate (timeSinceLastSync, deltaMs);     
       }
 
       PRINTLN ("[syncToDCF] updated time");
 
       #ifdef SERIAL_DEBUG
-      Main.printTickCount   = 0;          // reset RS232 print period
+      G.printTickCount   = 0;      // reset RS232 print period
       #endif
 
-      Main.manuallyAdjusted = false;      // clear the manual adjustment flag
-      coldStart             = false;      // clear the initial startup flag
+      G.manuallyAdjusted = false;  // clear the manual adjustment flag
+      coldStart          = false;  // clear the initial startup flag
     }
 
     lastDelta = delta; // needed for validating consecutive DCF77 measurements against each other
@@ -758,10 +762,12 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
 
   errorPPM = (timeOffsetMs * 1000) / (int32_t)measDuration;
 
-  // TODO: for debugging the calibration inaccuracy issue
-  if (NUM_DEBUG_VALUES >= 8) {
-    Main.debugValue[7] = errorPPM;
+  #ifdef VALUE_DEBUG
+  // for debugging the calibration inaccuracy issue
+  if (NUM_DEBUG_VALUES >= 7) {
+    G.debugValue[6] = errorPPM;
   }
+  #endif
   
   cli ();
   Settings.timer1Period += errorPPM;
@@ -771,8 +777,8 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   Settings.secPerDayCorrect = TIMER1_TO_SEC_PER_DAY (Settings.timer1Period);
 
   // to avoid race conditions, timer period is updated from within the ISRs
-  Main.timer1PeriodUpdateFlag = true;
-  Main.timer2PeriodUpdateFlag = true;
+  G.timer1PeriodUpdateFlag = true;
+  G.timer2PeriodUpdateFlag = true;
 
   PRINT   ("[timerCalibrate] measDuration=");
   PRINTLN (measDuration, DEC);
@@ -795,32 +801,32 @@ void updateDigits () {
   static int8_t lastMin = 0;
   
   // check whether current state requires time or date display
-  Main.timeDigits.value[0] = dec2bcdLow  (Main.systemTm->tm_sec);
-  Main.timeDigits.value[1] = dec2bcdHigh (Main.systemTm->tm_sec);
-  Main.timeDigits.value[2] = dec2bcdLow  (Main.systemTm->tm_min);
-  Main.timeDigits.value[3] = dec2bcdHigh (Main.systemTm->tm_min);
-  Main.timeDigits.value[4] = dec2bcdLow  (Main.systemTm->tm_hour);
-  Main.timeDigits.value[5] = dec2bcdHigh (Main.systemTm->tm_hour);
-  Main.dateDigits.value[0] = dec2bcdLow  (Main.systemTm->tm_year);
-  Main.dateDigits.value[1] = dec2bcdHigh (Main.systemTm->tm_year);
-  Main.dateDigits.value[2] = dec2bcdLow  (Main.systemTm->tm_mon + 1);
-  Main.dateDigits.value[3] = dec2bcdHigh (Main.systemTm->tm_mon + 1);
-  Main.dateDigits.value[4] = dec2bcdLow  (Main.systemTm->tm_mday);
-  Main.dateDigits.value[5] = dec2bcdHigh (Main.systemTm->tm_mday); 
+  G.timeDigits.value[0] = dec2bcdLow  (G.systemTm->tm_sec);
+  G.timeDigits.value[1] = dec2bcdHigh (G.systemTm->tm_sec);
+  G.timeDigits.value[2] = dec2bcdLow  (G.systemTm->tm_min);
+  G.timeDigits.value[3] = dec2bcdHigh (G.systemTm->tm_min);
+  G.timeDigits.value[4] = dec2bcdLow  (G.systemTm->tm_hour);
+  G.timeDigits.value[5] = dec2bcdHigh (G.systemTm->tm_hour);
+  G.dateDigits.value[0] = dec2bcdLow  (G.systemTm->tm_year);
+  G.dateDigits.value[1] = dec2bcdHigh (G.systemTm->tm_year);
+  G.dateDigits.value[2] = dec2bcdLow  (G.systemTm->tm_mon + 1);
+  G.dateDigits.value[3] = dec2bcdHigh (G.systemTm->tm_mon + 1);
+  G.dateDigits.value[4] = dec2bcdLow  (G.systemTm->tm_mday);
+  G.dateDigits.value[5] = dec2bcdHigh (G.systemTm->tm_mday); 
 
   
-  if (Main.menuState == SHOW_TIME) {
+  if (G.menuState == SHOW_TIME) {
     // trigger Nixie digit "Slot Machine" effect
-    if (Main.systemTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && Main.timeDigits.value[2] == 0))) {
+    if (G.systemTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && G.timeDigits.value[2] == 0))) {
       Nixie.slotMachine();
     }
     // trigger the cathode poisoning prevention routine
-    if (Settings.cathodePoisonPrevent == 1 && Main.cppEffectEnabled && Main.timeDigits.value[0] == 0) {
+    if (Settings.cathodePoisonPrevent == 1 && G.cppEffectEnabled && G.timeDigits.value[0] == 0) {
       Nixie.setBrightness (Brightness.maximum ());
       Nixie.cathodePoisonPrevent ();
     }
   }
-  lastMin = Main.systemTm->tm_min;
+  lastMin = G.systemTm->tm_min;
 }
 /*********/
 
@@ -840,7 +846,7 @@ void adcRead (void) {
   uint8_t val;
   
   // start ADC for the current button (will be ignored if already started)
-  Adc.start (Main.analogPin[chanIdx]);
+  Adc.start (G.analogPin[chanIdx]);
 
   // check if ADC finished detecting the value
   adcVal = Adc.readVal ();
@@ -851,7 +857,7 @@ void adcRead (void) {
     ts = millis ();
     
     // process light sensor value
-    if (Main.analogPin[chanIdx] == LIGHTSENS_APIN) {
+    if (G.analogPin[chanIdx] == LIGHTSENS_APIN) {
      // reduce light sensor sampling frequency
      // disable auto-brightness when a button is pressed to avoid ADC channel cross-talk
      // disable auto-brightness during cathode poisoning prevention
@@ -863,7 +869,7 @@ void adcRead (void) {
       }     
     }
     // check external power voltage
-    else if (Main.analogPin[chanIdx] == EXTPWR_APIN) {
+    else if (G.analogPin[chanIdx] == EXTPWR_APIN) {
       if (adcVal < 512) powerSave();  // enable power save mode if external power is lost
     }
     // process button values
@@ -940,8 +946,8 @@ void powerSave (void) {
         sei ();
         set_sleep_mode (SLEEP_MODE_PWR_DOWN);
         mode = DEEP_SLEEP;
-        Main.dcfSyncActive = true;        // time must be synced to DCF77 upon power re-connect
-        Main.manuallyAdjusted = true;     // inaccurate time-keeping should never be used for Timer1 calibration
+        G.dcfSyncActive = true;        // time must be synced to DCF77 upon power re-connect
+        G.manuallyAdjusted = true;     // inaccurate time-keeping should never be used for Timer1 calibration
       }  
     }
     // Deep Sleep:
@@ -989,15 +995,15 @@ void reorderMenu (int8_t menuIndex) {
 
   // never call the function more than once per menu state
   // ensure that menuIndex is within range
-  if (Main.menuState != lastState && menuIndex > 0 && menuIndex < MENU_ORDER_LIST_SIZE) {
+  if (G.menuState != lastState && menuIndex > 0 && menuIndex < MENU_ORDER_LIST_SIZE) {
     
-    temp = Main.menuOrder[menuIndex-1];
+    temp = G.menuOrder[menuIndex-1];
     for (int8_t i = menuIndex-1; i > 0; i--) {
-      Main.menuOrder[i] = Main.menuOrder[i-1];
+      G.menuOrder[i] = G.menuOrder[i-1];
     }
-    Main.menuOrder[0] = temp;
+    G.menuOrder[0] = temp;
     
-    lastState = Main.menuState;
+    lastState = G.menuState;
   }
 }
 /*********/
@@ -1009,14 +1015,14 @@ void reorderMenu (int8_t menuIndex) {
  ***********************************/
 #define SET_TIME_DATE( EXPR ) { \
   cli (); \
-  t = Main.systemTm; \
+  t = G.systemTm; \
   EXPR; \
   sysTime = mktime (t); \
   set_system_time (sysTime); \
   updateDigits (); \
   sei (); \
-  Main.dcfSyncActive = true; \
-  Main.manuallyAdjusted = true; \
+  G.dcfSyncActive = true; \
+  G.manuallyAdjusted = true; \
 }
 /*********/
 
@@ -1045,14 +1051,14 @@ void settingsMenu (void) {
 
   // button 0 - rising edge --> initiate a long press
   if (Button[0].rising ()) {
-    timeoutTs = ts; // reset the menu timeout
+    timeoutTs = ts;  // reset the menu timeout
   }
   
   Nixie.refresh ();  // refresh the Nixie tube display
 
   // modes where buttons 1 and 2 are used for digit/setting adjustments 
   // using the progressive scrolling acceleration feature
-  if ( Main.menuState == SHOW_TIMER || (Main.menuState >= SET_ALARM && Main.menuState != SET_SEC) ) {
+  if ( G.menuState == SHOW_TIMER || (G.menuState >= SET_ALARM && G.menuState != SET_SEC) ) {
     // button 1 or 2 - rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()){
       accelTs = ts;
@@ -1083,7 +1089,7 @@ void settingsMenu (void) {
   // in timekeeping and alarm modes, buttons 1 and 2 are used switching to the date and alarm modes 
   // or for adjusting display brightness when long-pressed
   // or for snoozing or resetting the alarm
-  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_WEEK) {
+  if (G.menuState == SHOW_TIME || G.menuState == SHOW_DATE || G.menuState == SHOW_ALARM || G.menuState == SHOW_WEEK) {
     // button 1  or 2- rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()) {
       timeoutTs = ts;
@@ -1092,37 +1098,37 @@ void settingsMenu (void) {
     // button 1 - falling edge --> snooze alarm or change state: SHOW_DATE->SHOW_WEEK->SHOW_ALARM->SHOW_TIME 
     else if (Button[1].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
-      else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_DATE_E;
-      else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_WEEK_E;
-      else if (Main.menuState == SHOW_WEEK) Main.menuState = SHOW_ALARM_E;
-      else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_TIME_E;
+      else if (G.menuState == SHOW_TIME) G.menuState = SHOW_DATE_E;
+      else if (G.menuState == SHOW_DATE) G.menuState = SHOW_WEEK_E;
+      else if (G.menuState == SHOW_WEEK) G.menuState = SHOW_ALARM_E;
+      else if (G.menuState == SHOW_ALARM) G.menuState = SHOW_TIME_E;
     }
     // button 2 - falling edge --> snooze alarm or change state: SHOW_ALARM->SHOW_WEEK->SHOW_DATE->SHOW_TIME
     else if (Button[2].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
-      else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_ALARM_E;
-      else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_WEEK_E;
-      else if (Main.menuState == SHOW_WEEK) Main.menuState = SHOW_DATE_E;
-      else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
+      else if (G.menuState == SHOW_TIME) G.menuState = SHOW_ALARM_E;
+      else if (G.menuState == SHOW_ALARM) G.menuState = SHOW_WEEK_E;
+      else if (G.menuState == SHOW_WEEK) G.menuState = SHOW_DATE_E;
+      else if (G.menuState == SHOW_DATE) G.menuState = SHOW_TIME_E;
     }
     else if (Alarm.alarm || Alarm.snoozing) {
       // button 1 or 2 - long press --> reset alarm
       if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
       brightnessEnable = false;
     }
-    else if ( Main.menuState == SHOW_ALARM) {
+    else if ( G.menuState == SHOW_ALARM) {
       // button 1 long press --> toggle alarm active
       if (Button[1].longPress ()) {
         Alarm.modeToggle ();
       }
     }
-    else if ( Main.menuState == SHOW_DATE || Main.menuState == SHOW_WEEK) {
+    else if ( G.menuState == SHOW_DATE || G.menuState == SHOW_WEEK) {
       // button 1 long press --> toggle DCF77 sync status
       if (Button[1].longPress ()) {
-        Main.dcfSyncActive = !Main.dcfSyncActive;
+        G.dcfSyncActive = !G.dcfSyncActive;
       }
     }
-    else if ( Main.menuState == SHOW_TIME) {
+    else if ( G.menuState == SHOW_TIME) {
       // button 1 or 2 - long press --> increase/decrease brightness
       if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50 && brightnessEnable) {
         if (Button[1].pressed) valU8 = Brightness.increase ();
@@ -1138,32 +1144,32 @@ void settingsMenu (void) {
 
   // modes where short-pressing button 0 is used for switching to the next display mode
   // when alarm(s) are active short-pressing button 0 will cancel or snooze the alarm(s) instead
-  if ( (Main.menuState >= SHOW_TIME && Main.menuState <= SHOW_SERVICE) || Main.menuState >= SET_HOUR || CdTimer.alarm || Alarm.alarm) {
+  if ( (G.menuState >= SHOW_TIME && G.menuState <= SHOW_SERVICE) || G.menuState >= SET_HOUR || CdTimer.alarm || Alarm.alarm) {
     // button 0 - falling edge --> reset alarms or change state: nextState
     if (Button[0].falling ()) {
-      if (Main.cppEffectEnabled)  Main.cppEffectEnabled = false; // disable cathode poisoning prevention effect
+      if (G.cppEffectEnabled)  G.cppEffectEnabled = false; // disable cathode poisoning prevention effect
       if (Alarm.alarm || CdTimer.alarm) {
         Alarm.snooze ();       // snooze the alarm clock
         CdTimer.resetAlarm (); // reset alarm of the countdown timer feature
       }
       else {
         menuTimeout = menuTimeoutDefault;
-        Main.menuState = nextState;
+        G.menuState = nextState;
       }
     }
   }
 
   // in selected modes, long-pressing button 0 shall switch to the pre-defined setting mode or display mode
   // when the alarm clock is snoozed or active, long-pressing button 0 will cancel the alarm
-  if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM || Main.menuState == SHOW_WEEK ||
-      Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM) {
+  if (G.menuState == SHOW_TIME || G.menuState == SHOW_DATE || G.menuState == SHOW_ALARM || G.menuState == SHOW_WEEK ||
+      G.menuState == SHOW_SERVICE || G.menuState >= SET_ALARM) {
     // button 0 - long press --> reset alarm or change state: returnState 
     if (Button[0].longPress ()) {
       if (Alarm.alarm || Alarm.snoozing) {
         Alarm.resetAlarm ();  // stop the alarm clock
       }
       else {
-        Main.menuState = returnState;
+        G.menuState = returnState;
       }
     }
   }
@@ -1172,23 +1178,23 @@ void settingsMenu (void) {
   Nixie.refresh ();  // refresh the Nixie tube display
 
   // timeout --> change state: SHOW_TIME
-  if (Main.menuState != SHOW_BLANK_E && Main.menuState != SHOW_BLANK && Main.menuState != SHOW_TIME) {
+  if (G.menuState != SHOW_BLANK_E && G.menuState != SHOW_BLANK && G.menuState != SHOW_TIME) {
     if (ts - timeoutTs > menuTimeout) {
       menuTimeout = menuTimeoutDefault;
-      Main.menuState = SHOW_TIME_E;
+      G.menuState = SHOW_TIME_E;
     }
   }
 
   // timeout --> return to time display upon pressing button 0
-  if (Main.menuState == SHOW_TIMER || Main.menuState == SHOW_STOPWATCH) {
+  if (G.menuState == SHOW_TIMER || G.menuState == SHOW_STOPWATCH) {
     if (ts - timeoutTs > menuTimeoutNextState) {
       nextState = SHOW_TIME_E;
     }
   }
 
   // if alarm is ringing the switch to the corresponding display mode
-  if (Alarm.alarm && Main.menuState != SHOW_TIME) Main.menuState = SHOW_TIME_E;
-  if (CdTimer.alarm && Main.menuState != SHOW_TIMER) Main.menuState = SHOW_TIMER_E;
+  if (Alarm.alarm && G.menuState != SHOW_TIME) G.menuState = SHOW_TIME_E;
+  if (CdTimer.alarm && G.menuState != SHOW_TIMER) G.menuState = SHOW_TIMER_E;
   
   Nixie.refresh ();  // refresh the Nixie tube display
 
@@ -1203,32 +1209,32 @@ void settingsMenu (void) {
   // - setting state may define the return state to be selected by long-pressing button 0 (returnState)
   // - in order to reduce the code size functionality that is common to several states is nested within
   //   the conditional statements defined above
-  switch (Main.menuState) {
+  switch (G.menuState) {
 
     /*################################################################################*/
     case SHOW_TIME_E:
       Nixie.enable (true);
       Nixie.cancelScroll ();
-      Nixie.setDigits (&Main.timeDigits);
-      for (i = 0; i < 6; i++) Main.timeDigits.blnk[i] = false;
+      Nixie.setDigits (&G.timeDigits);
+      for (i = 0; i < 6; i++) G.timeDigits.blnk[i] = false;
       menuIndex = 0;
-      nextState = Main.menuOrder[menuIndex]; // switch to this state after short-pressing button 0
+      nextState = G.menuOrder[menuIndex]; // switch to this state after short-pressing button 0
                                                      // use dynamic menu ordering
       returnState = SET_HOUR_E;                      // switch to this state after long-pressing button 0
-      Main.menuState = SHOW_TIME;
+      G.menuState = SHOW_TIME;
     case SHOW_TIME:
       break;
       
     /*################################################################################*/
     case SHOW_DATE_E:
-      Nixie.setDigits (&Main.dateDigits);
-      Main.dateDigits.comma[4] = true;
-      Main.dateDigits.comma[2] = true;
-      for (i = 0; i < 6; i++) Main.dateDigits.blnk[i] = false;
+      Nixie.setDigits (&G.dateDigits);
+      G.dateDigits.comma[4] = true;
+      G.dateDigits.comma[2] = true;
+      for (i = 0; i < 6; i++) G.dateDigits.blnk[i] = false;
       //menuIndex = 0;
       nextState = SHOW_TIME_E;
       returnState = SET_DAY_E;
-      Main.menuState = SHOW_DATE;
+      G.menuState = SHOW_DATE;
     case SHOW_DATE:
       // do nothing
       break;
@@ -1237,16 +1243,16 @@ void settingsMenu (void) {
     case SHOW_WEEK_E: 
       Nixie.resetDigits (&valueDigits);
       Nixie.setDigits (&valueDigits); 
-      valU8 = week_of_year (Main.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + 1;
+      valU8 = week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + 1;
       valueDigits.value[0] = dec2bcdLow (valU8);
       valueDigits.value[1] = dec2bcdHigh (valU8);
       valueDigits.blank[2] = true;
       valueDigits.blank[3] = true;
-      valueDigits.value[4] = (uint8_t)(Main.systemTm->tm_wday == 0 ? 7 : Main.systemTm->tm_wday);
+      valueDigits.value[4] = (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
       valueDigits.blank[5] = true;
       nextState = SHOW_TIME_E;
       returnState = SHOW_WEEK_E;
-      Main.menuState = SHOW_WEEK; 
+      G.menuState = SHOW_WEEK; 
     case SHOW_WEEK:
       // do nothing
       break;
@@ -1259,7 +1265,7 @@ void settingsMenu (void) {
       //menuIndex = 0;
       nextState = SHOW_TIME_E;
       returnState = SET_ALARM_E;
-      Main.menuState = SHOW_ALARM;
+      G.menuState = SHOW_ALARM;
     case SHOW_ALARM:
       // do nothing
       break;
@@ -1270,9 +1276,9 @@ void settingsMenu (void) {
       Nixie.setDigits (&CdTimer.digits);
       if (!CdTimer.running && !CdTimer.alarm && !Stopwatch.active) CdTimer.reset ();
       menuIndex++;
-      nextState = Main.menuOrder[menuIndex];
+      nextState = G.menuOrder[menuIndex];
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
-      Main.menuState = SHOW_TIMER;
+      G.menuState = SHOW_TIMER;
     case SHOW_TIMER:
       // reset the menu timeout as long as timer is running
       if (CdTimer.running) timeoutTs = ts;
@@ -1332,9 +1338,9 @@ void settingsMenu (void) {
       Nixie.setDigits (&Stopwatch.digits);
       if (!Stopwatch.active && !CdTimer.active) Stopwatch.reset ();
       menuIndex++;
-      nextState = Main.menuOrder[menuIndex];
+      nextState = G.menuOrder[menuIndex];
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
-      Main.menuState = SHOW_STOPWATCH;
+      G.menuState = SHOW_STOPWATCH;
     case SHOW_STOPWATCH:
       // reset the menu timeout as long as stopwatch is running
       if (Stopwatch.running) timeoutTs = ts;
@@ -1375,7 +1381,7 @@ void settingsMenu (void) {
       vIdx = 0;
       nextState = SHOW_TIME_E;
       returnState = SET_SETTINGS_E;
-      Main.menuState = SHOW_SERVICE;
+      G.menuState = SHOW_SERVICE;
       goto SHOW_SERVICE_ENTRY_POINT;
     case SHOW_SERVICE:      
       // button 1 or 2 rising edge --> cycle back and forth between system parameters
@@ -1415,35 +1421,37 @@ void settingsMenu (void) {
           valueDigits.value[7] = 3;
           valueDigits.comma[7] = true;
           valueDigits.blank[6] = true; 
-          valueDigits.value[5]  = dec2bcdHigh (VERSION_MAJOR);
-          valueDigits.value[4]  = dec2bcdLow (VERSION_MAJOR);
+          valueDigits.value[5] = dec2bcdHigh (VERSION_MAJOR);
+          valueDigits.value[4] = dec2bcdLow (VERSION_MAJOR);
           valueDigits.comma[4] = true;
-          valueDigits.value[3]  = dec2bcdHigh (VERSION_MINOR);
-          valueDigits.value[2]  = dec2bcdLow (VERSION_MINOR);
+          valueDigits.value[3] = dec2bcdHigh (VERSION_MINOR);
+          valueDigits.value[2] = dec2bcdLow (VERSION_MINOR);
           valueDigits.comma[2] = true;    
-          valueDigits.value[1]  = dec2bcdHigh (VERSION_MAINT);
-          valueDigits.value[0]  = dec2bcdLow (VERSION_MAINT);  
-        }   
+          valueDigits.value[1] = dec2bcdHigh (VERSION_MAINT);
+          valueDigits.value[0] = dec2bcdLow (VERSION_MAINT);  
+        }
+        #ifdef VALUE_DEBUG   
         // show the Debug values
         else if (vIdx > 2 && vIdx < NUM_SERVICE_VALUES) {
           uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
-          valueDigits.numDigits = 12;
-          valueDigits.value[11] = idx + 1;
-          valueDigits.comma[10] = true;
-          valueDigits.blank[10] = true;
+          valueDigits.numDigits = NUM_DEBUG_DIGITS + 2;
+          valueDigits.value[NUM_DEBUG_DIGITS + 1] = idx + 1;
+          valueDigits.comma[NUM_DEBUG_DIGITS]     = true;
+          valueDigits.blank[NUM_DEBUG_DIGITS]     = true;
           if (idx < NUM_DEBUG_VALUES)  {   
-            if (Main.debugValue[idx] < 0) {
-              Nixie.dec2bcd ((uint32_t)(-Main.debugValue[idx]), &valueDigits, 10);
-              for (i = 0; i < 10; i++) valueDigits.comma[i] = true;
+            if (G.debugValue[idx] < 0) {
+              Nixie.dec2bcd ((uint32_t)(-G.debugValue[idx]), &valueDigits, NUM_DEBUG_DIGITS);
+              for (i = 0; i < NUM_DEBUG_DIGITS; i++) valueDigits.comma[i] = true;
             }
             else {
-              Nixie.dec2bcd ((uint32_t)Main.debugValue[idx], &valueDigits, 10);
+              Nixie.dec2bcd ((uint32_t)G.debugValue[idx], &valueDigits, NUM_DEBUG_DIGITS);
             }
           }
           else {
-            Nixie.dec2bcd (0, &valueDigits, 10);
+            Nixie.dec2bcd (0, &valueDigits, NUM_DEBUG_DIGITS);
           }
         }
+        #endif
 
         Nixie.scroll ();
       }
@@ -1454,7 +1462,7 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SHOW_BLANK_E:
       Nixie.enable (false);
-      Main.menuState = SHOW_BLANK;
+      G.menuState = SHOW_BLANK;
     case SHOW_BLANK:
       // button 0, 1 or 2 - rising edge --> catch rising edge
       Button[0].rising ();
@@ -1462,7 +1470,7 @@ void settingsMenu (void) {
       Button[2].rising ();
       // button 0, 1 or 2 - falling edge --> re-activate display
       if (Button[0].falling () || Button[1].falling () || Button[2].falling ()) {
-        Main.menuState = SHOW_TIME_E;
+        G.menuState = SHOW_TIME_E;
       }
       break;
 
@@ -1475,7 +1483,7 @@ void settingsMenu (void) {
       Alarm.digits.blnk[5] = true;
       Alarm.digits.blnk[4] = true;
       returnState = SHOW_ALARM_E;
-      Main.menuState = SET_ALARM;
+      G.menuState = SET_ALARM;
     case SET_ALARM:
       // button 0 - falling edge --> select next setting value
       if (Button[0].falling ()) {   
@@ -1539,7 +1547,7 @@ void settingsMenu (void) {
       valueDigits.value[1] = dec2bcdHigh ((uint8_t)abs(val8)); 
       valueDigits.value[0] = dec2bcdLow ((uint8_t)abs(val8)); 
       returnState = SHOW_TIME_E;
-      Main.menuState = SET_SETTINGS;
+      G.menuState = SET_SETTINGS;
     case SET_SETTINGS:
       // button 0 - falling edge --> select next setting value
       if (Button[0].falling ()) {   
@@ -1579,8 +1587,8 @@ void settingsMenu (void) {
             Settings.timer1Period = SEC_PER_DAY_TO_TIMER1 (Settings.secPerDayCorrect);
             sei (); 
             // to avoid race conditions, timer period is updated from within the ISRs
-            Main.timer1PeriodUpdateFlag = true;
-            Main.timer2PeriodUpdateFlag = true;
+            G.timer1PeriodUpdateFlag = true;
+            G.timer2PeriodUpdateFlag = true;
           } 
           // if auto brightness feature was activated/deactivated
           else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessAutoAdjust) {
@@ -1600,16 +1608,16 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_HOUR_E:
       Nixie.cancelScroll ();
-      Nixie.setDigits (&Main.timeDigits);
-      Main.timeDigits.blnk[0] = false;
-      Main.timeDigits.blnk[1] = false;
-      Main.timeDigits.blnk[2] = false;
-      Main.timeDigits.blnk[3] = false;
-      Main.timeDigits.blnk[4] = true;
-      Main.timeDigits.blnk[5] = true;
+      Nixie.setDigits (&G.timeDigits);
+      G.timeDigits.blnk[0] = false;
+      G.timeDigits.blnk[1] = false;
+      G.timeDigits.blnk[2] = false;
+      G.timeDigits.blnk[3] = false;
+      G.timeDigits.blnk[4] = true;
+      G.timeDigits.blnk[5] = true;
       nextState = SET_MIN_E;
       returnState = SHOW_TIME_E;
-      Main.menuState = SET_HOUR;
+      G.menuState = SET_HOUR;
     case SET_HOUR:
       // button 1 - pressed --> increase hours
       if (Button[1].pressed) {
@@ -1631,16 +1639,16 @@ void settingsMenu (void) {
       
     /*################################################################################*/
     case SET_MIN_E:
-      Nixie.setDigits (&Main.timeDigits);
-      Main.timeDigits.blnk[0] = false;
-      Main.timeDigits.blnk[1] = false;
-      Main.timeDigits.blnk[2] = true;
-      Main.timeDigits.blnk[3] = true;
-      Main.timeDigits.blnk[4] = false;
-      Main.timeDigits.blnk[5] = false;
+      Nixie.setDigits (&G.timeDigits);
+      G.timeDigits.blnk[0] = false;
+      G.timeDigits.blnk[1] = false;
+      G.timeDigits.blnk[2] = true;
+      G.timeDigits.blnk[3] = true;
+      G.timeDigits.blnk[4] = false;
+      G.timeDigits.blnk[5] = false;
       nextState = SET_SEC_E;
       returnState = SHOW_TIME_E;
-      Main.menuState = SET_MIN;
+      G.menuState = SET_MIN;
     case SET_MIN:
       // button 1 - pressed --> increase minutes
       if (Button[1].pressed) {
@@ -1662,38 +1670,38 @@ void settingsMenu (void) {
       
     /*################################################################################*/
     case SET_SEC_E:
-      Nixie.setDigits (&Main.timeDigits);
-      Main.timeDigits.blnk[0] = true;
-      Main.timeDigits.blnk[1] = true;
-      Main.timeDigits.blnk[2] = false;
-      Main.timeDigits.blnk[3] = false;
-      Main.timeDigits.blnk[4] = false;
-      Main.timeDigits.blnk[5] = false;
+      Nixie.setDigits (&G.timeDigits);
+      G.timeDigits.blnk[0] = true;
+      G.timeDigits.blnk[1] = true;
+      G.timeDigits.blnk[2] = false;
+      G.timeDigits.blnk[3] = false;
+      G.timeDigits.blnk[4] = false;
+      G.timeDigits.blnk[5] = false;
       nextState = SET_DAY_E;
       returnState = SHOW_TIME_E;
-      Main.menuState = SET_SEC;
+      G.menuState = SET_SEC;
     case SET_SEC:
       // button 1 - rising edge --> stop Timer1 then reset seconds to 0
       if (Button[1].rising ()) {
         timeoutTs = ts; // reset the menu timeout
-        Main.timeDigits.blnk[0] = false;
-        Main.timeDigits.blnk[1] = false; 
+        G.timeDigits.blnk[0] = false;
+        G.timeDigits.blnk[1] = false; 
         cli ();
         Timer1.stop ();
         Timer1.restart ();
         sei ();
-        t = Main.systemTm; 
+        t = G.systemTm; 
         t->tm_sec = 0;
         sysTime = mktime (t);
         set_system_time (sysTime);
         updateDigits ();
-        Main.dcfSyncActive = true;
-        Main.manuallyAdjusted = true;
+        G.dcfSyncActive = true;
+        G.manuallyAdjusted = true;
       }
       // button 1 - falling edge --> start Timer1
       else if (Button[1].falling ()) {
-        Main.timeDigits.blnk[0] = true;
-        Main.timeDigits.blnk[1] = true;
+        G.timeDigits.blnk[0] = true;
+        G.timeDigits.blnk[1] = true;
         Nixie.resetBlinking ();
         sysTime = time (NULL);
         set_system_time (sysTime - 1);
@@ -1703,18 +1711,18 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_DAY_E:
-      Nixie.setDigits (&Main.dateDigits);
-      Main.dateDigits.blnk[0] = false;
-      Main.dateDigits.blnk[1] = false;
-      Main.dateDigits.blnk[2] = false;
-      Main.dateDigits.blnk[3] = false;
-      Main.dateDigits.blnk[4] = true;
-      Main.dateDigits.blnk[5] = true; 
-      Main.dateDigits.comma[4] = true;
-      Main.dateDigits.comma[2] = true;
+      Nixie.setDigits (&G.dateDigits);
+      G.dateDigits.blnk[0] = false;
+      G.dateDigits.blnk[1] = false;
+      G.dateDigits.blnk[2] = false;
+      G.dateDigits.blnk[3] = false;
+      G.dateDigits.blnk[4] = true;
+      G.dateDigits.blnk[5] = true; 
+      G.dateDigits.comma[4] = true;
+      G.dateDigits.comma[2] = true;
       nextState = SET_MONTH_E;
       returnState = SHOW_DATE_E;
-      Main.menuState = SET_DAY;
+      G.menuState = SET_DAY;
     case SET_DAY:
       // button 1 - pressed --> increase days
       if (Button[1].pressed) {
@@ -1736,16 +1744,16 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_MONTH_E:
-      Nixie.setDigits (&Main.dateDigits);
-      Main.dateDigits.blnk[0] = false;
-      Main.dateDigits.blnk[1] = false;
-      Main.dateDigits.blnk[2] = true;
-      Main.dateDigits.blnk[3] = true;
-      Main.dateDigits.blnk[4] = false;
-      Main.dateDigits.blnk[5] = false; 
+      Nixie.setDigits (&G.dateDigits);
+      G.dateDigits.blnk[0] = false;
+      G.dateDigits.blnk[1] = false;
+      G.dateDigits.blnk[2] = true;
+      G.dateDigits.blnk[3] = true;
+      G.dateDigits.blnk[4] = false;
+      G.dateDigits.blnk[5] = false; 
       nextState = SET_YEAR_E;
       returnState = SHOW_DATE_E;
-      Main.menuState = SET_MONTH;
+      G.menuState = SET_MONTH;
     case SET_MONTH:
       // button 1 - pressed --> increase months
       if (Button[1].pressed) {
@@ -1767,16 +1775,16 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_YEAR_E:
-      Nixie.setDigits (&Main.dateDigits);
-      Main.dateDigits.blnk[0] = true;
-      Main.dateDigits.blnk[1] = true;
-      Main.dateDigits.blnk[2] = false;
-      Main.dateDigits.blnk[3] = false;
-      Main.dateDigits.blnk[4] = false;
-      Main.dateDigits.blnk[5] = false; 
+      Nixie.setDigits (&G.dateDigits);
+      G.dateDigits.blnk[0] = true;
+      G.dateDigits.blnk[1] = true;
+      G.dateDigits.blnk[2] = false;
+      G.dateDigits.blnk[3] = false;
+      G.dateDigits.blnk[4] = false;
+      G.dateDigits.blnk[5] = false; 
       nextState = SET_HOUR_E;
       returnState = SHOW_DATE_E;
-      Main.menuState = SET_YEAR;
+      G.menuState = SET_YEAR;
     case SET_YEAR:
       // button 1 - pressed --> increase years
       if (Button[1].pressed) {
@@ -1798,7 +1806,7 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     default:
-      Main.menuState = SHOW_TIME_E;
+      G.menuState = SHOW_TIME_E;
       break;
    
   }
