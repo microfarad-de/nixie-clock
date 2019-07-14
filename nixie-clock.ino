@@ -414,9 +414,9 @@ void loop() {
   }
                     
   lastHour = hour;
-  hour = G.systemTm->tm_hour;
-  minute = G.systemTm->tm_min;
-  wday = G.systemTm->tm_wday;
+  hour     = G.systemTm->tm_hour;
+  minute   = G.systemTm->tm_min;
+  wday     = G.systemTm->tm_wday;
 
   // start DCF77 reception at the specified hour
   if (hour != lastHour && hour == Settings.dcfSyncHour) G.dcfSyncActive = true;
@@ -621,7 +621,7 @@ void featureCallback (bool start) {
     Timer2.stop (); 
     Timer2.restart (); 
     sei (); 
-    G.timer2SecCounter = 0; 
+    G.timer2SecCounter   = 0; 
     G.timer2TenthCounter = 0;   
   }
 }
@@ -1232,7 +1232,7 @@ void settingsMenu (void) {
       G.dateDigits.comma[2] = true;
       for (i = 0; i < 6; i++) G.dateDigits.blnk[i] = false;
       //menuIndex = 0;
-      nextState = SHOW_TIME_E;
+      nextState   = SHOW_TIME_E;
       returnState = SET_DAY_E;
       G.menuState = SHOW_DATE;
     case SHOW_DATE:
@@ -1250,7 +1250,7 @@ void settingsMenu (void) {
       valueDigits.blank[3] = true;
       valueDigits.value[4] = (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
       valueDigits.blank[5] = true;
-      nextState = SHOW_TIME_E;
+      nextState   = SHOW_TIME_E;
       returnState = SHOW_WEEK_E;
       G.menuState = SHOW_WEEK; 
     case SHOW_WEEK:
@@ -1263,7 +1263,7 @@ void settingsMenu (void) {
       Alarm.displayRefresh ();
       for (i = 0; i < 6; i++) Alarm.digits.blnk[i] = false;
       //menuIndex = 0;
-      nextState = SHOW_TIME_E;
+      nextState   = SHOW_TIME_E;
       returnState = SET_ALARM_E;
       G.menuState = SHOW_ALARM;
     case SHOW_ALARM:
@@ -1276,7 +1276,7 @@ void settingsMenu (void) {
       Nixie.setDigits (&CdTimer.digits);
       if (!CdTimer.running && !CdTimer.alarm && !Stopwatch.active) CdTimer.reset ();
       menuIndex++;
-      nextState = G.menuOrder[menuIndex];
+      nextState   = G.menuOrder[menuIndex];
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
       G.menuState = SHOW_TIMER;
     case SHOW_TIMER:
@@ -1325,7 +1325,7 @@ void settingsMenu (void) {
           else                   CdTimer.minuteDecrease ();
           /*}*/
           CdTimer.resetAlarm ();
-          scrollTs = ts;
+          scrollTs  = ts;
           nextState = SHOW_TIME_E;
           reorderMenu (menuIndex);
           /*scrollCount++;*/
@@ -1338,7 +1338,7 @@ void settingsMenu (void) {
       Nixie.setDigits (&Stopwatch.digits);
       if (!Stopwatch.active && !CdTimer.active) Stopwatch.reset ();
       menuIndex++;
-      nextState = G.menuOrder[menuIndex];
+      nextState   = G.menuOrder[menuIndex];
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
       G.menuState = SHOW_STOPWATCH;
     case SHOW_STOPWATCH:
@@ -1379,15 +1379,15 @@ void settingsMenu (void) {
       Nixie.setDigits (&valueDigits);   
       bannerTs = ts;
       vIdx = 0;
-      nextState = SHOW_TIME_E;
+      nextState   = SHOW_TIME_E;
       returnState = SET_SETTINGS_E;
       G.menuState = SHOW_SERVICE;
       goto SHOW_SERVICE_ENTRY_POINT;
     case SHOW_SERVICE:      
       // button 1 or 2 rising edge --> cycle back and forth between system parameters
       if (Button[1].rising () || Button[2].rising ()){
-        timeoutTs = ts; // reset the menu timeout
-        bannerTs = ts;  // reset display scroll period
+        timeoutTs = ts;  // reset the menu timeout
+        bannerTs  = ts;  // reset display scroll period
         Nixie.cancelScroll ();
         Nixie.resetDigits (&valueDigits);
         if      (Button[1].pressed) {
@@ -1532,10 +1532,10 @@ void settingsMenu (void) {
     case SET_SETTINGS_E:
       Nixie.cancelScroll ();
       Nixie.setDigits (&valueDigits);
-      valueDigits.blnk[0] = true;
-      valueDigits.blnk[1] = true;
-      valueDigits.blnk[4] = false;
-      valueDigits.blnk[5] = false;
+      valueDigits.blnk[0]  = true;
+      valueDigits.blnk[1]  = true;
+      valueDigits.blnk[4]  = false;
+      valueDigits.blnk[5]  = false;
       valueDigits.blank[2] = true;
       valueDigits.blank[3] = true;
       valueDigits.comma[5] = true;
@@ -1615,7 +1615,7 @@ void settingsMenu (void) {
       G.timeDigits.blnk[3] = false;
       G.timeDigits.blnk[4] = true;
       G.timeDigits.blnk[5] = true;
-      nextState = SET_MIN_E;
+      nextState   = SET_MIN_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_HOUR;
     case SET_HOUR:
@@ -1646,7 +1646,7 @@ void settingsMenu (void) {
       G.timeDigits.blnk[3] = true;
       G.timeDigits.blnk[4] = false;
       G.timeDigits.blnk[5] = false;
-      nextState = SET_SEC_E;
+      nextState   = SET_SEC_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_MIN;
     case SET_MIN:
@@ -1677,7 +1677,7 @@ void settingsMenu (void) {
       G.timeDigits.blnk[3] = false;
       G.timeDigits.blnk[4] = false;
       G.timeDigits.blnk[5] = false;
-      nextState = SET_DAY_E;
+      nextState   = SET_DAY_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_SEC;
     case SET_SEC:
@@ -1720,7 +1720,7 @@ void settingsMenu (void) {
       G.dateDigits.blnk[5] = true; 
       G.dateDigits.comma[4] = true;
       G.dateDigits.comma[2] = true;
-      nextState = SET_MONTH_E;
+      nextState   = SET_MONTH_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_DAY;
     case SET_DAY:
@@ -1751,7 +1751,7 @@ void settingsMenu (void) {
       G.dateDigits.blnk[3] = true;
       G.dateDigits.blnk[4] = false;
       G.dateDigits.blnk[5] = false; 
-      nextState = SET_YEAR_E;
+      nextState   = SET_YEAR_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_MONTH;
     case SET_MONTH:
@@ -1782,7 +1782,7 @@ void settingsMenu (void) {
       G.dateDigits.blnk[3] = false;
       G.dateDigits.blnk[4] = false;
       G.dateDigits.blnk[5] = false; 
-      nextState = SET_HOUR_E;
+      nextState   = SET_HOUR_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_YEAR;
     case SET_YEAR:
