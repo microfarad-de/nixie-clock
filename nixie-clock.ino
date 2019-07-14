@@ -132,7 +132,7 @@
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
-#define NUM_DEBUG_VALUES       7             // total number of debug values shown in the service menu
+#define NUM_DEBUG_VALUES       8             // total number of debug values shown in the service menu
 #define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)   // total number of values inside the service menu
 
 
@@ -159,7 +159,7 @@ struct Settings_t {
   volatile uint32_t nixieUptime;                   // stores the nixie tube uptime in seconds
   uint32_t nixieUptimeResetCode;                   // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
   bool dcfSyncEnabled;                             // enables DCF77 synchronization feature
-  bool dcfSignalIndicator;                         // enables the live DCF77 signal strength indicator (blinking decimal point on digit 0)
+  bool dcfSignalIndicator;                         // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
   uint8_t dcfSyncHour;                             // hour of day when DCF77 sync shall start
   uint8_t blankScreenMode;                         // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
   uint8_t blankScreenStartHr;                      // start hour for disabling the display
@@ -212,28 +212,29 @@ struct {
 };
 
 /*
- * Main class that holds the global variables
+ * Global variables
  */
-class MainClass {
+struct {
   public:
-    uint32_t dcfSyncInterval = 0;                    // DCF77 synchronization interval in minutes
-    time_t lastDcfSyncTime = 0;                      // stores the time of last successful DCF77 synchronizaiton
-    bool manuallyAdjusted = true;                    // prevent crystal drift compensation if clock was manually adjusted  
-    bool dcfSyncActive = true;                       // enable/disable DCF77 synchronization
-    bool cppEffectEnabled = false;                   // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
-    volatile uint32_t secTickMsStamp = 0;            // millis() at the last system tick, used for accurate crystal drift compensation
-    volatile bool timer1TickFlag = false;            // flag is set every second by the Timer1 ISR 
-    volatile bool timer1PeriodUpdateFlag = false;    // flag is set whenever Timer1 period needs to be updated by the ISR
-    volatile bool timer2PeriodUpdateFlag = false;    // flag is set whenever Timer2 period needs to be updated by the ISR
-    volatile uint8_t timer2SecCounter = 0;           // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
-    volatile uint8_t timer2TenthCounter = 0;         // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
+    uint32_t dcfSyncInterval             = 0;      // DCF77 synchronization interval in minutes
+    time_t lastDcfSyncTime               = 0;      // stores the time of last successful DCF77 synchronizaiton
+    bool manuallyAdjusted                = true;   // prevent crystal drift compensation if clock was manually adjusted  
+    bool dcfSyncActive                   = true;   // enable/disable DCF77 synchronization
+    bool cppEffectEnabled                = false;  // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
+    volatile uint32_t secTickMsStamp     = 0;      // millis() at the last second tick, used for accurate crystal drift compensation
+    volatile bool timer1TickFlag         = false;  // flag is set every second by the Timer1 ISR 
+    volatile bool timer1PeriodUpdateFlag = false;  // flag is set whenever Timer1 period needs to be updated by the ISR
+    volatile bool timer2PeriodUpdateFlag = false;  // flag is set whenever Timer2 period needs to be updated by the ISR
+    volatile uint8_t timer2SecCounter    = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
+    volatile uint8_t timer2TenthCounter  = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
   #ifdef SERIAL_DEBUG
-    volatile uint8_t printTickCount = 0;             // incremented by the Timer1 ISR every second
+    volatile uint8_t printTickCount      = 0;      // incremented by the Timer1 ISR every second
   #endif
-    tm *systemTm = NULL;                             // pointer to the current system time structure
-    NixieDigits_s timeDigits;                        // stores the Nixie display digit values of the current time
-    NixieDigits_s dateDigits;                        // stores the Nixie display digit values of the current date 
-    MenuState_e menuState = SHOW_TIME_E;             // state of the menu navigation state machine 
+    time_t systemTime                    = 0;      // current system time
+    tm    *systemTm                      = NULL;   // pointer to the current system time structure
+    NixieDigits_s timeDigits;                      // stores the Nixie display digit values of the current time
+    NixieDigits_s dateDigits;                      // stores the Nixie display digit values of the current date 
+    MenuState_e menuState = SHOW_TIME_E;           // state of the menu navigation state machine 
 
     // analog pins as an array
     uint8_t analogPin[NUM_APINS] = 
@@ -397,16 +398,15 @@ void setup() {
 void loop() {
   static bool cppCondition = false, blankCondition = false;
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
-  time_t sysTime;
-
+  
   // actions to be executed once every second
   if (Main.timer1TickFlag) {
     cli();
-    // get the current time
-    sysTime = time (NULL);
-    Main.systemTm = localtime (&sysTime);
+    Main.systemTime     = time (NULL);    // get the current time
     sei();
-    updateDigits ();  // update the Nixie display digits    
+    Main.systemTm       = localtime (&Main.systemTime);
+    Main.secTickMsStamp = millis ();
+    updateDigits ();                      // update the Nixie display digits 
     Main.timer1TickFlag = false;    
   }
                     
@@ -527,7 +527,7 @@ void loop() {
   // print the current time
   if (Main.printTickCount >= 15) {
     PRINT ("[loop] ");
-    PRINTLN (asctime (localtime (&sysTime)));
+    PRINTLN (asctime (localtime (&Main.systemTime)));
     //PRINT ("[loop] nixieUptime=");
     //PRINTLN (Settings.nixieUptime, DEC);
     Main.printTickCount = 0;
@@ -546,7 +546,6 @@ void loop() {
  ***********************************/
 void timer1ISR () {
 
-  Main.secTickMsStamp = millis ();
   system_tick ();
 
   if (Nixie.enabled) Settings.nixieUptime++;
@@ -666,38 +665,40 @@ void syncToDCF () {
 
   // DCF77 time has been successfully decoded
   if (Main.dcfSyncActive && rv == 0) {
-    cli ();                                      // enter critical section by disabling interrupts
-    ms = millis () - Main.secTickMsStamp;        // milliseconds elapsed since the last full second
-    sysTime = time (NULL);                       // get the current system time 
-    sei();                                       // re-enable interrupts  
-    dcfTime = mktime (&Dcf.currentTm);           // get the DCF77 timestamp                     
+    ms      = millis () - Main.secTickMsStamp;  // milliseconds elapsed since the last full second
+    sysTime = Main.systemTime;                  // get the current system time 
+    dcfTime = mktime (&Dcf.currentTm);          // get the DCF77 timestamp                     
     
-    delta = (int32_t)(sysTime - dcfTime);               // time difference between the system time and DCF77 time in seconds     
-    deltaMs = delta * 1000  + ms;                       // above time difference in milliseconds
-    timeSinceLastSync = dcfTime - Main.lastDcfSyncTime; // time elapsed since the last successful DCF77 synchronization in seconds
+    delta   = (int32_t)(sysTime - dcfTime);              // time difference between the system time and DCF77 time in seconds     
+    deltaMs = delta * 1000  + ms;                        // above time difference in milliseconds
+    timeSinceLastSync = dcfTime - Main.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
     
     // if no big time deviation was detected or 
     // two consecutive DCF77 timestamps produce a similar time deviation
     // then update the system time 
     if (abs (delta) < 60 || abs (delta - lastDelta) < 60) {
-      cli ();                                      
-      Timer1.restart ();                           // reset the beginning of a second 
-      set_system_time (dcfTime);                   // apply the new system time
-      sei ();                                      
-      Main.lastDcfSyncTime = dcfTime;              // remember last sync time
-      Main.dcfSyncActive = false;                  // pause DCF77 reception
+
+      Timer1.stop ();
+      Timer1.restart ();               // reset the beginning of a second 
+      cli ();
+      set_system_time (dcfTime - 1);   // apply the new system time, subtract 1s to compensate for initial tick
+      sei ();
+      Timer1.start ();
+      Main.lastDcfSyncTime = dcfTime;  // remember last sync time
+      Main.dcfSyncActive   = false;    // pause DCF77 reception
         
 
       // calibrate timer1 to compensate for crystal drift
-      if (abs (delta) < 60 && timeSinceLastSync > 3600 && !Main.manuallyAdjusted && !coldStart) {
+      if (abs (delta) < 60 /*&& timeSinceLastSync > 3600*/ && !Main.manuallyAdjusted && !coldStart) {
         // TODO: for debugging the calibration inaccuracy issue
-        if (NUM_DEBUG_VALUES >= 6) {
+        if (NUM_DEBUG_VALUES >= 7) {
           Main.debugValue[0] = (int32_t)timeSinceLastSync;
           Main.debugValue[1] = (int32_t)sysTime;
           Main.debugValue[2] = (int32_t)dcfTime;
-          Main.debugValue[3] = delta;
-          Main.debugValue[4] = ms; 
-          Main.debugValue[5] = deltaMs;
+          Main.debugValue[3] = (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec;
+          Main.debugValue[4] = delta;
+          Main.debugValue[5] = ms; 
+          Main.debugValue[6] = deltaMs;
         }
         timerCalibrate (timeSinceLastSync, deltaMs);     
       }
@@ -705,17 +706,17 @@ void syncToDCF () {
       PRINTLN ("[syncToDCF] updated time");
 
       #ifdef SERIAL_DEBUG
-        Main.printTickCount = 0;          // reset RS232 print period
+      Main.printTickCount   = 0;          // reset RS232 print period
       #endif
 
       Main.manuallyAdjusted = false;      // clear the manual adjustment flag
-      coldStart = false;                  // clear the initial startup flag
+      coldStart             = false;      // clear the initial startup flag
     }
 
     lastDelta = delta; // needed for validating consecutive DCF77 measurements against each other
   }
 
-#ifdef SERIAL_DEBUG  
+  #ifdef SERIAL_DEBUG  
   // debug printing
   // timestamp validation failed
   if (rv < 31) {
@@ -741,8 +742,7 @@ void syncToDCF () {
     PRINTLN (Dcf.lastIdx, DEC);
     Dcf.lastIdx = 0;
   }
-
-#endif
+  #endif
 
 }
 /*********/
@@ -759,8 +759,8 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   errorPPM = (timeOffsetMs * 1000) / (int32_t)measDuration;
 
   // TODO: for debugging the calibration inaccuracy issue
-  if (NUM_DEBUG_VALUES >= 7) {
-    Main.debugValue[6] = errorPPM;
+  if (NUM_DEBUG_VALUES >= 8) {
+    Main.debugValue[7] = errorPPM;
   }
   
   cli ();
