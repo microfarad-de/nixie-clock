@@ -132,8 +132,12 @@
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
-#define NUM_DEBUG_VALUES       7             // total number of debug values shown in the service menu
-#define NUM_DEBUG_DIGITS       6             // number of digits for the debug values shown in the service menu
+#ifdef VALUE_DEBUG
+  #define NUM_DEBUG_VALUES     7             // total number of debug values shown in the service menu
+#else 
+  #define NUM_DEBUG_VALUES     0
+#endif
+#define NUM_DEBUG_DIGITS       6           // number of digits for the debug values shown in the service menu  
 #define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)   // total number of values inside the service menu
 
 
