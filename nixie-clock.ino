@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.4.0
- * Date:    July 2019
+ * Version: 3.5.0
+ * Date:    August 2019
  */
 #define VERSION_MAJOR 3  // Major version
-#define VERSION_MINOR 4  // Minor version
+#define VERSION_MINOR 5  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -1281,7 +1281,7 @@ void settingsMenu (void) {
       G.menuState = SHOW_TIMER;
     case SHOW_TIMER:
       // reset the menu timeout as long as timer is running
-      if (CdTimer.running) timeoutTs = ts;
+      if (CdTimer.running && ts - timeoutTs > menuTimeout - 1000) timeoutTs = ts;
       
       // button 0 - long press --> reset the countdown timer
       if (Button[0].longPress ()) { 
@@ -1343,7 +1343,7 @@ void settingsMenu (void) {
       G.menuState = SHOW_STOPWATCH;
     case SHOW_STOPWATCH:
       // reset the menu timeout as long as stopwatch is running
-      if (Stopwatch.running) timeoutTs = ts;
+      if (Stopwatch.running && ts - timeoutTs > menuTimeout - 1000) timeoutTs = ts;
     
       // button 0 - long press --> reset the stopwatch
       if (Button[0].longPress ()) { 
