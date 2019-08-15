@@ -65,7 +65,7 @@
 //#include "BuildDate.h"
 
 
-#define VALUE_DEBUG         // activate the debug values within the service menu
+//#define VALUE_DEBUG         // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
