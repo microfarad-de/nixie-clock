@@ -317,17 +317,17 @@ void StopwatchClass::reset (void) {
 
 /*#######################################################################################*/
 
-void AlarmClass::initialize (AlarmEeprom_s * settings) {
+void AlarmClass::initialize (AlarmEeprom_s *settings) {
+  uint8_t *active = (uint8_t *)&settings->active;      // to make sure out-of-range bool gets caught
+  uint8_t *weekdays = (uint8_t *)&settings->weekdays;
   this->settings = settings;
   alarm = false;
   snoozing = false;
   Nixie.blinkAll (false);
-  uint8_t *active = (uint8_t)settings->active;      // to make sure out-of-range bool gets caught
-  uint8_t *weekdays = (uint8_t)settings->weekdays;
   if (settings->minute < 0 || settings->minute > 59) settings->minute = 0;
   if (settings->hour < 0 || settings->hour > 23) settings->hour = 0;
-  if (*active != false && *active != true) settings->active = false;
-  if (*weekdays != false && *weekdays != true) settings->weekdays = false;
+  if (*active != 0 && *active != 1) settings->active = 0;
+  if (*weekdays != 0 && *weekdays != 1) settings->weekdays = 0;
   displayRefresh ();
 }
 

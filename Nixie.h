@@ -83,7 +83,7 @@ class NixieClass {
     /*
      * Set display brightness
      * Parameters:
-     *   brightness : 0..255
+     *   brightness : 0..99
      */
     void setBrightness (uint8_t brightness);
     

@@ -158,7 +158,7 @@ void NixieClass::refresh (void) {
 
 
 void NixieClass::setBrightness (uint8_t brightness) {
-  this->digitOnDuration = map (brightness, 0, 255, 0, MAX_ON_DURATION);
+  this->digitOnDuration = map (brightness, 0, 99, 0, MAX_ON_DURATION);
 }
 
 void NixieClass::blinkAll (bool enable) {
