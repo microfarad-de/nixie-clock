@@ -28,7 +28,6 @@
 #define __FEATURES_H
 
 #include <Arduino.h>
-#include "Helper.h"
 #include "Nixie.h"
 
 /*

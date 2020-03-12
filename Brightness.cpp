@@ -27,7 +27,7 @@
 #include "Brightness.h"
 #include <EEPROM.h>
 #include <assert.h>
-#include "helper.h"
+#include "src/Nvm/Nvm.h"
 
 
 #define PWM_STEPS 100

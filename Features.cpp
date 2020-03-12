@@ -25,6 +25,7 @@
  */
 
 #include "Features.h"
+#include "src/MathMf/MathMf.h"
 
 #define TIMER_ALARM_DURATION      (10 * 60000)
 #define ALARM_ALARM_DURATION      (30 * 60000)
@@ -53,7 +54,7 @@ void BuzzerClass::loopHandler (void) {
 
   ts = millis ();
   
-  if (ts - melodyTs > melody[index]) {
+  if (ts - melodyTs > (uint32_t)melody[index]) {
     digitalWrite (buzzerPin, !digitalRead (buzzerPin));
     melodyTs = ts;
     index++;

@@ -1,0 +1,19 @@
+[submodule "src/TimerOne"]
+	path = src/TimerOne
+	url = ssh://git@github.com/microfarad-de/TimerOne
+[submodule "src/TimerTwo"]
+	path = src/TimerTwo
+	url = ssh://git@github.com/microfarad-de/TimerTwo
+[submodule "src/Dcf"]
+	path = src/Dcf
+	url = ssh://git@github.com/microfarad-de/Dcf
+[submodule "src/Adc"]
+	path = src/Adc
+	url = ssh://git@github.com/microfarad-de/Adc
+	branch = nixie-clock
+[submodule "src/Nvm"]
+	path = src/Nvm
+	url = ssh://git@github.com/microfarad-de/Nvm
+[submodule "src/MathMf"]
+	path = src/MathMf
+	url = ssh://git@github.com/microfarad-de/MathMf

@@ -54,13 +54,14 @@
 #include <avr/sleep.h>
 #include <avr/power.h>
 #include <avr/wdt.h>
-#include "TimerOne.h"
-#include "TimerTwo.h"
-#include "Dcf.h"
+#include "src/TimerOne/TimerOne.h"
+#include "src/TimerTwo/TimerTwo.h"
+#include "src/Dcf/Dcf.h"
+#include "src/Adc/Adc.h"
+#include "src/Nvm/Nvm.h"
+#include "src/MathMf/MathMf.h"
 #include "Nixie.h"
-#include "Adc.h"
 #include "Brightness.h"
-#include "Helper.h"
 #include "Features.h"
 //#include "BuildDate.h"
 
