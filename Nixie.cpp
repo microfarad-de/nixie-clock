@@ -90,7 +90,6 @@ void NixieClass::refresh (void) {
       while (bcdVal > 9) bcdVal -= 10; 
     }
 
-
     commaVal = digits->comma[digit + scrollOffset] || comma[digit] || cppEnabled;
     anodeVal = !(blinkFlag && (digits->blnk[digit + scrollOffset] || blinkAllEnabled)) && !digits->blank[digit + scrollOffset];
 

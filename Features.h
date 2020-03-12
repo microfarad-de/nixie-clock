@@ -124,13 +124,22 @@ class StopwatchClass {
 
 
 /*
+ * Alarm modes
+ */
+enum AlarmMode_e {
+  ALARM_OFF = 0,
+  ALARM_WEEKENDS = 2,
+  ALARM_WEEKDAYS = 5,
+  ALARM_DAILY = 7
+};
+
+/*
  * Alarm settings to be stored in EEPROM
  */
 struct AlarmEeprom_s {
-  int8_t hour = 0;
-  int8_t minute = 0;
-  bool active = false;    
-  bool weekdays = false;  
+  int8_t hour;
+  int8_t minute;
+  AlarmMode_e mode;              
 };
 
 /*
@@ -140,17 +149,17 @@ class AlarmClass {
   public:
     void initialize (AlarmEeprom_s * settings);
     void loopHandler (int8_t hour, int8_t minute, int8_t wday, bool active);
-    void toggleActive (void); 
-    void toggleWeekdays (void);
     void startAlarm (void);
     void snooze (void);
     void resetAlarm (void);
+    void modeIncrease (void); 
+    void modeDecrease (void);
+    void modeToggle (void);
     void minuteIncrease (void);
     void minuteDecrease (void);
     void hourIncrease (void);
     void hourDecrease (void);
     void displayRefresh (void);
-    void displayRefreshWeekdays (void);
 
     bool alarm = false;
     bool snoozing = false;
@@ -160,6 +169,7 @@ class AlarmClass {
   private:
     uint32_t snoozeTs = 0; 
     uint32_t alarmTs = 0;    
+    AlarmMode_e lastMode = ALARM_DAILY;
 };
 
 

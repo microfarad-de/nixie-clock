@@ -318,16 +318,14 @@ void StopwatchClass::reset (void) {
 /*#######################################################################################*/
 
 void AlarmClass::initialize (AlarmEeprom_s *settings) {
-  uint8_t *active = (uint8_t *)&settings->active;      // to make sure out-of-range bool gets caught
-  uint8_t *weekdays = (uint8_t *)&settings->weekdays;
   this->settings = settings;
   alarm = false;
   snoozing = false;
   Nixie.blinkAll (false);
   if (settings->minute < 0 || settings->minute > 59) settings->minute = 0;
   if (settings->hour < 0 || settings->hour > 23) settings->hour = 0;
-  if (*active != 0 && *active != 1) settings->active = 0;
-  if (*weekdays != 0 && *weekdays != 1) settings->weekdays = 0;
+  if (settings->mode != ALARM_OFF && settings->mode != ALARM_WEEKENDS && 
+      settings->mode != ALARM_WEEKDAYS && settings->mode != ALARM_DAILY) settings->mode = ALARM_OFF;
   displayRefresh ();
 }
 
@@ -336,8 +334,10 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
   static uint32_t blinkTs = 0;
   uint32_t ts = millis ();
 
-  if (active && !snoozing && settings->active && minute != lastMinute &&
-      minute == settings->minute && hour == settings->hour && (!settings->weekdays || (wday >= 1 && wday <= 5) ) ) startAlarm (); 
+  if (active && !snoozing && settings->mode != ALARM_OFF && minute != lastMinute &&
+      minute == settings->minute && hour == settings->hour && 
+      (settings->mode != ALARM_WEEKDAYS || (wday >= 1 && wday <= 5)) && 
+      (settings->mode != ALARM_WEEKENDS || wday == 0 || wday == 6)) startAlarm (); 
 
   if (snoozing && ts - snoozeTs > ALARM_SNOOZE_DURATION) {
     snoozing = false; 
@@ -352,18 +352,6 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
   if (alarm && ts - alarmTs > ALARM_ALARM_DURATION) resetAlarm ();
 
   lastMinute = minute;
-}
-
-void AlarmClass::toggleActive (void) {
-  if (settings->active) settings->active = false;
-  else                  settings->active = true;
-  displayRefresh ();
-}
-
-void AlarmClass::toggleWeekdays (void) {
-  if (settings->weekdays) settings->weekdays = false;
-  else                    settings->weekdays = true;
-  displayRefreshWeekdays ();
 }
 
 void AlarmClass::startAlarm (void) {
@@ -396,6 +384,33 @@ void AlarmClass::resetAlarm (void) {
   }
 }
 
+void AlarmClass::modeIncrease (void) {
+  if      (settings->mode == ALARM_OFF)      settings->mode = ALARM_WEEKENDS;
+  else if (settings->mode == ALARM_WEEKENDS) settings->mode = ALARM_WEEKDAYS;
+  else if (settings->mode == ALARM_WEEKDAYS) settings->mode = ALARM_DAILY;
+  else if (settings->mode == ALARM_DAILY)    settings->mode = ALARM_OFF, lastMode = ALARM_DAILY;
+  displayRefresh ();
+}
+
+void AlarmClass::modeDecrease (void) {
+  if      (settings->mode == ALARM_OFF)      settings->mode = ALARM_DAILY;
+  else if (settings->mode == ALARM_DAILY)    settings->mode = ALARM_WEEKDAYS;
+  else if (settings->mode == ALARM_WEEKDAYS) settings->mode = ALARM_WEEKENDS;
+  else if (settings->mode == ALARM_WEEKENDS) settings->mode = ALARM_OFF, lastMode = ALARM_DAILY;
+  displayRefresh ();
+}
+
+void AlarmClass::modeToggle (void) {
+  if (settings->mode == ALARM_OFF) {
+    settings->mode = lastMode;
+  }
+  else {
+    lastMode = settings->mode;
+    settings->mode = ALARM_OFF;
+  }
+  displayRefresh ();
+}
+
 void AlarmClass::minuteIncrease (void) {
   settings->minute++;
   if (settings->minute > 59) settings->minute = 0;
@@ -422,26 +437,15 @@ void AlarmClass::hourDecrease (void) {
 
 void AlarmClass::displayRefresh (void) {
   for (uint8_t i = 0; i < 6; i++) digits.blank[i] = false;
-  digits.value[0] = settings->active;
+  digits.value[0] = (uint8_t)settings->mode;
+  Nixie.comma[0] = (bool)settings->mode;
   digits.blank[1] = true;
   digits.value[2] = dec2bcdLow  (settings->minute);
   digits.value[3] = dec2bcdHigh (settings->minute);
   digits.value[4] = dec2bcdLow  (settings->hour);
-  digits.value[5] = dec2bcdHigh (settings->hour); 
-  Nixie.comma[0] = settings->active;
-  digits.comma[2] = settings->weekdays;
+  digits.value[5] = dec2bcdHigh (settings->hour);   
 }
 
-void AlarmClass::displayRefreshWeekdays (void) {
-  digits.value[0] = settings->active;
-  digits.blank[1] = true;
-  digits.value[2] = settings->weekdays;
-  digits.blank[3] = true;
-  digits.blank[4] = true;
-  digits.blank[5] = true; 
-  Nixie.comma[0] = settings->active;
-  digits.comma[2] = settings->weekdays;
-}
 
 
 /*#######################################################################################*/

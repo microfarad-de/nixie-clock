@@ -94,6 +94,7 @@
 #define EEPROM_SETTINGS_ADDR 0                   // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE 3                   // size of the dynamic menu ordering list
+#define SETTINGS_LUT_SIZE 15                     // size of the settings lookup table
 
 // conversion macros
 #define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
@@ -120,7 +121,7 @@ struct Settings_t {
   bool dcfSyncEnabled;                             // enables DCF77 synchronization feature
   bool dcfSignalIndicator;                         // enables the live DCF77 signal strength indicator (blinking decimal point on digit 0)
   uint8_t dcfSyncHour;                             // hour of day when DCF77 sync shall start
-  uint8_t blankScreenMode;                         // turn-off display during a time interval in order to reduce tube wear (2 = on weekdays, 3 = permanently)
+  uint8_t blankScreenMode;                         // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
   uint8_t blankScreenStartHr;                      // start hour for disabling the display
   uint8_t blankScreenFinishHr;                     // finish hour for disabling the display
   bool cathodePoisonPrevent;                       // enables cathode poisoning prevention measure by cycling through all digits
@@ -129,13 +130,13 @@ struct Settings_t {
   bool slotMachineEveryMinute;                     // Nixie digit "Slot Machine" effect is triggered every minute
   bool brightnessAutoAdjust;                       // enables the brightness auto-adjustment feature
   bool brightnessBoost;                            // enables the brightness boosting feature
-  uint8_t reserved[12];                            // reserved for future use
+  uint8_t blankScreenMode2;                        // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
+  uint8_t blankScreenStartHr2;                     // start hour for disabling the display (second profile)
+  uint8_t blankScreenFinishHr2;                    // finish hour for disabling the display (second profile)
+  uint8_t reserved[9];                             // reserved for future use
   AlarmEeprom_s alarm;                             // alarm clock settings
 } Settings;
 
-
-
-#define SETTINGS_LUT_SIZE 12  // size of the settings lookup table
 
 /*
  * Lookup table that maps the individual system settings 
@@ -150,18 +151,21 @@ struct {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] = 
 {
-  { (int8_t *)&Settings.blankScreenMode,        1, 0,     0,    3,     0 }, // screen blanking
+  { (int8_t *)&Settings.blankScreenMode,        1, 0,     0,    4,     0 }, // screen blanking
   { (int8_t *)&Settings.blankScreenStartHr,     1, 1,     0,   23,     2 }, //  - start hour
   { (int8_t *)&Settings.blankScreenFinishHr,    1, 2,     0,   23,     6 }, //  - finish hour
-  { (int8_t *)&Settings.cathodePoisonPrevent,   2, 0, false, true,  true }, // cathode poisoning prevention
-  { (int8_t *)&Settings.cppStartHr,             2, 1,     0,   23,     4 }, //  - start hour
-  { (int8_t *)&Settings.dcfSyncEnabled,         3, 0, false, true,  true }, // DCF sync
-  { (int8_t *)&Settings.dcfSignalIndicator,     3, 1, false, true,  true }, //  - signal indicator
-  { (int8_t *)&Settings.dcfSyncHour,            3, 2,     0,   23,     3 }, //  - sync hour
-  { (int8_t *)&Settings.brightnessAutoAdjust,   4, 0, false, true,  true }, // brightness auto adjust
-  { (int8_t *)&Settings.brightnessBoost,        4, 1, false, true,  true }, //  - brighntess boost
-  { (int8_t *)&Settings.slotMachineEveryMinute, 5, 0, false, true, false }, // "slot machine" effect 
-  { (int8_t *)&Settings.secPerDayCorrect,       6, 0,   -99,   99,     0 }  // clock drift correction (seconds per day)
+  { (int8_t *)&Settings.blankScreenMode2,       2, 0,     0,    3,     0 }, // screen blanking (second profile)
+  { (int8_t *)&Settings.blankScreenStartHr2,    2, 1,     0,   23,     2 }, //  - start hour
+  { (int8_t *)&Settings.blankScreenFinishHr2,   2, 2,     0,   23,     6 }, //  - finish hour
+  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 0, false, true,  true }, // cathode poisoning prevention
+  { (int8_t *)&Settings.cppStartHr,             3, 1,     0,   23,     4 }, //  - start hour
+  { (int8_t *)&Settings.dcfSyncEnabled,         4, 0, false, true,  true }, // DCF sync
+  { (int8_t *)&Settings.dcfSignalIndicator,     4, 1, false, true,  true }, //  - signal indicator
+  { (int8_t *)&Settings.dcfSyncHour,            4, 2,     0,   23,     3 }, //  - sync hour
+  { (int8_t *)&Settings.brightnessAutoAdjust,   5, 0, false, true,  true }, // brightness auto adjust
+  { (int8_t *)&Settings.brightnessBoost,        5, 1, false, true,  true }, //  - brighntess boost
+  { (int8_t *)&Settings.slotMachineEveryMinute, 6, 0, false, true, false }, // "slot machine" effect 
+  { (int8_t *)&Settings.secPerDayCorrect,       7, 0,   -99,   99,     0 }  // clock drift correction (seconds per day)
 };
 
 /*
@@ -334,7 +338,7 @@ void loop() {
   ts = micros ();
   if (Main.printTickCount == 5) {
     if (!tsFlag) {
-      PRINT   ("loop duration (us)=");
+      PRINT   ("[loop] duration (us)=");
       PRINTLN (ts - lastTs, DEC);
       tsFlag = true;
     }
@@ -343,8 +347,14 @@ void loop() {
     tsFlag = false;
   }
 #endif */
-  
-  // get the current hour
+
+  // actions to be executed once every second
+  if (Main.timer1TickFlag) {
+    updateDigits ();  // update the Nixie display digits    
+    Main.timer1TickFlag = false;    
+  }
+                    
+  // get the current time
   cli ();
   sysTime = time (NULL);
   sei ();
@@ -352,12 +362,13 @@ void loop() {
   hour = Main.systemTm->tm_hour;
   minute = Main.systemTm->tm_min;
   wday = Main.systemTm->tm_wday;
-  
+
   // start DCF77 reception at the specified hour
   if (hour != lastHour && hour == Settings.dcfSyncHour) Main.dcfSyncActive = true;
 
-  Nixie.refresh ();  // refresh the Nixie tube display
-  
+  Nixie.refresh (); // refresh the Nixie tube display
+                    // refresh method is called many times across the code to ensure smooth display operation
+
   // enable cathode poisoning prevention effect at a preset hour
   if (Settings.cathodePoisonPrevent && hour == Settings.cppStartHr && Main.menuState != SET_HOUR) {
     if (!cppCondition) {
@@ -372,32 +383,42 @@ void loop() {
 
   Nixie.refresh ();
   
-  // disable Nixie display at a preset hour interval in order to extend the Nixie tube lifetime (blankScreenMode = 1 or 2)
-  // or permanently disable Nixie Display (blankScreenMode = 3)
-  if (  Settings.blankScreenMode == 3 || (
-         (Settings.blankScreenMode == 1 || Settings.blankScreenMode == 2) && (
-           (Settings.blankScreenStartHr <= Settings.blankScreenFinishHr &&  hour >= Settings.blankScreenStartHr && hour < Settings.blankScreenFinishHr  ) ||
-           (Settings.blankScreenStartHr >  Settings.blankScreenFinishHr && (hour >= Settings.blankScreenStartHr || hour < Settings.blankScreenFinishHr) ) 
-         ) &&
-         (Settings.blankScreenMode != 2 || (wday >= 1 && wday <= 5) ) && !Main.cppEffectEnabled
-       ) 
+  // disable Nixie display at a preset hour interval in order to extend the Nixie tube lifetime
+  // or permanently disable Nixie Display 
+  if (Settings.blankScreenMode == 4 || 
+       ( ( (
+             (Settings.blankScreenMode >= 1 && Settings.blankScreenMode <= 3 ) && (
+               (Settings.blankScreenStartHr <= Settings.blankScreenFinishHr &&  hour >= Settings.blankScreenStartHr && hour < Settings.blankScreenFinishHr  ) ||
+               (Settings.blankScreenStartHr >  Settings.blankScreenFinishHr && (hour >= Settings.blankScreenStartHr || hour < Settings.blankScreenFinishHr) ) 
+             ) &&
+             (Settings.blankScreenMode != 2 || (wday >= 1 && wday <= 5) ) && (Settings.blankScreenMode != 3 || wday == 0 || wday == 6) 
+           ) ||
+           (
+             (Settings.blankScreenMode2 >= 1 && Settings.blankScreenMode2 <= 3 ) && (
+               (Settings.blankScreenStartHr2 <= Settings.blankScreenFinishHr2 &&  hour >= Settings.blankScreenStartHr2 && hour < Settings.blankScreenFinishHr2  ) ||
+               (Settings.blankScreenStartHr2 >  Settings.blankScreenFinishHr2 && (hour >= Settings.blankScreenStartHr2 || hour < Settings.blankScreenFinishHr2) ) 
+             ) &&
+             (Settings.blankScreenMode2 != 2 || (wday >= 1 && wday <= 5) ) && (Settings.blankScreenMode2 != 3 || wday == 0 || wday == 6)
+           )
+         ) && !Main.cppEffectEnabled
+       )
      ) {
     if (!blankCondition && Main.menuState == SHOW_TIME) {
       Main.menuState = SHOW_BLANK_E;
       blankCondition = true;
     }
-    // re-enable blanking after leaving the time display or at the change of an hour 
+    // re-enable blanking after switching to the service display or at the change of an hour 
     else if (Main.menuState == SHOW_SERVICE || (hour != lastHour && Main.menuState != SET_HOUR)) {
       blankCondition = false;
     }
   }
-  // disable blanking if blanking blankScreenMode != 3, CPP is enabled or outside the preset time interval
+  // disable blanking if blanking blankScreenMode != 4, CPP is enabled or outside the preset time intervals
   else if (Main.menuState == SHOW_BLANK) {
     Main.menuState = SHOW_TIME_E;
     blankCondition = false;
   }
 
-  Nixie.refresh ();  // refresh the Nixie tube display
+  Nixie.refresh ();
 
   // write-back system settings to EEPROM every night (needed for saving Nixe tube uptime)
   if (hour != lastHour && hour == 1 && Main.menuState != SET_HOUR) {
@@ -407,6 +428,8 @@ void loop() {
       PRINTLN ("[loop] >EEPROM");   
   }
 
+  Nixie.refresh ();
+
   // toggle the decimal point on the Nixie tube
   if (Settings.dcfSyncEnabled) {  
     Nixie.comma[1] = Main.dcfSyncActive && (DCF.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
@@ -415,36 +438,33 @@ void loop() {
     Nixie.comma[1] = false; 
   }
 
-  Nixie.refresh ();  // refresh the Nixie tube display
-                     // refresh method is called many times across the code to ensure smooth display operation
+  Nixie.refresh ();
 
-  // update the Nixie display digits after every second tick
-  if (Main.timer1TickFlag) {
-    updateDigits ();
-    Main.timer1TickFlag = false;
-  }
-
-  Nixie.refresh ();  // refresh the Nixie tube display
-
-  adcRead ();        // process the ADC channels
+  adcRead ();               // process the ADC channels
   
-  Nixie.refresh ();  // refresh the Nixie tube display
+  Nixie.refresh ();
  
-  settingsMenu ();   // navigate the settings menu
+  settingsMenu ();          // navigate the settings menu
   
-  Nixie.refresh ();  // refresh the Nixie tube display
+  Nixie.refresh ();
   
-  syncToDCF ();      // synchronize with DCF77 time
+  syncToDCF ();             // synchronize with DCF77 time
 
-  Nixie.refresh ();  // refresh the Nixie tube display
+  Nixie.refresh ();
   
+  CdTimer.loopHandler ();   // countdown timer loop handler 
+
+  Nixie.refresh ();
+  
+  Stopwatch.loopHandler (); // stopwatch loop handler
+ 
+  Nixie.refresh ();
+
   Alarm.loopHandler (hour, minute, wday, Main.menuState != SET_MIN && Main.menuState != SET_SEC);  // alarm clock loop handler
-  CdTimer.loopHandler ();            // countdown timer loop handler 
 
-  Nixie.refresh ();  // refresh the Nixie tube display
+  Nixie.refresh ();
   
-  Stopwatch.loopHandler ();          // stopwatch loop handler
-  Buzzer.loopHandler ();             // buzzer loop handlrer
+  Buzzer.loopHandler ();    // buzzer loop handlrer
 
 
 #ifdef SERIAL_DEBUG  
@@ -730,7 +750,6 @@ void updateDigits () {
       Nixie.cathodePoisonPrevent ();
     }
   }
-
   lastMin = Main.systemTm->tm_min;
 }
 /*********/
@@ -1075,10 +1094,8 @@ void settingsMenu (void) {
   }
 
   // if alarm is ringing the switch to the corresponding display mode
-  if (Main.menuState != SHOW_BLANK) {
-    if (Alarm.alarm && Main.menuState != SHOW_TIME) Main.menuState = SHOW_TIME_E;
-    if (CdTimer.alarm && Main.menuState != SHOW_TIMER) Main.menuState = SHOW_TIMER_E;
-  }
+  if (Alarm.alarm && Main.menuState != SHOW_TIME) Main.menuState = SHOW_TIME_E;
+  if (CdTimer.alarm && Main.menuState != SHOW_TIMER) Main.menuState = SHOW_TIMER_E;
   
   Nixie.refresh ();  // refresh the Nixie tube display
 
@@ -1138,7 +1155,7 @@ void settingsMenu (void) {
     case SHOW_ALARM:
       // button 1 long press --> toggle alarm active
       if (Button[1].longPress ()) {
-        Alarm.toggleActive ();
+        Alarm.modeToggle ();
         Alarm.resetAlarm ();
         CdTimer.resetAlarm ();
       }
@@ -1345,7 +1362,7 @@ void settingsMenu (void) {
     case SET_ALARM:
       // button 0 - falling edge --> select next setting value
       if (Button[0].falling ()) {   
-        sIdx++; if (sIdx > 3) sIdx = 0;
+        sIdx++; if (sIdx > 2) sIdx = 0;
         if (sIdx == 0) {
           Alarm.digits.blnk[5] = true;
           Alarm.digits.blnk[4] = true;
@@ -1357,16 +1374,12 @@ void settingsMenu (void) {
           Alarm.digits.blnk[4] = false;
           Alarm.digits.blnk[3] = true;
           Alarm.digits.blnk[2] = true;
-        } 
-        else if (sIdx == 2) {
-           Alarm.displayRefreshWeekdays ();
         }
-        else if (sIdx == 3) {
+        else if (sIdx == 2) {
           Alarm.digits.blnk[3] = false;
           Alarm.digits.blnk[2] = false;
           Alarm.digits.blnk[1] = true;
           Alarm.digits.blnk[0] = true;
-          Alarm.displayRefresh ();
         }
       }
       // button 1 or 2 - pressed --> increase/decrease value
@@ -1381,8 +1394,10 @@ void settingsMenu (void) {
             if (Button[1].pressed) Alarm.minuteIncrease ();
             else                   Alarm.minuteDecrease ();
           }
-          else if (sIdx == 2) Alarm.toggleWeekdays ();
-          else if (sIdx == 3) Alarm.toggleActive ();
+          else if (sIdx == 2) {
+            if (Button[1].pressed) Alarm.modeIncrease ();
+            else                   Alarm.modeDecrease ();
+          }
           scrollTs = ts;
         }   
       }
