@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.4.0
- * Date:    August 2019
+ * Version: 3.4.1
+ * Date:    March 2020
  */
 #define VERSION_MAJOR 3  // Major version
 #define VERSION_MINOR 4  // Minor version
-#define VERSION_MAINT 0  // Maintenance version
+#define VERSION_MAINT 1  // Maintenance version
 
 
 
