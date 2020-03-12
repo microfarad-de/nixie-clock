@@ -1,7 +1,7 @@
 /*
  * A Nixie Clock Implementation
  * Features:
- * - 6 IN-8-2 Nixie tubes with decimal points
+ * - 6 IN-8-2 Nixie featuring 0-9 digits and decimal points
  * - Multiplexed display, requires one single K155ID1 Nixie driver chip
  * - Synchronization with the DCF77 time signal
  * - Automatic crystal drift compensation using DCF77 time
@@ -9,12 +9,12 @@
  * - Dual timers: Timer1 used for timekeeping and Timer2 for countdown timer / stopwatch
  * - Automatic and manual display brightness adjustment
  * - Menu navigation using 3 push-buttons
- * - Alarm clock with the weekday-only option
+ * - Alarm clock with the weekday and weekend options
  * - Countdown timer
  * - Stopwatch
- * - "Service" menu
- * - "Slot machine" effect
- * - Screen blanking
+ * - Service menu
+ * - Cathode poisoning prevention and the "Slot Machine" effect
+ * - Screen blanking with dual time intervals
  * - Settings are stored to EEPROM
  * - and more...
  * 

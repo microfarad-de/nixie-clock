@@ -59,7 +59,12 @@ uint8_t BrightnessClass::lightSensorUpdate (int16_t value) {
 uint8_t BrightnessClass::increase (void) {
   int16_t val = (int16_t)lut[lutIdx];
   val++;
-  if (val >= TOTAL_STEPS) val = TOTAL_STEPS - 1; 
+  if (boostEnabled) {
+    if (val >= TOTAL_STEPS) val = TOTAL_STEPS - 1;
+  }
+  else {
+    if (val >= PWM_STEPS) val = PWM_STEPS - 1;
+  }
   lut[lutIdx] = (uint8_t)val;
   if (autoEnabled) interpolate ();
   return boost (lut[lutIdx]);
