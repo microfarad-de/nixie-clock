@@ -17,3 +17,7 @@
 [submodule "src/MathMf"]
 	path = src/MathMf
 	url = ssh://git@github.com/microfarad-de/MathMf
+[submodule "src/Button"]
+	path = src/Button
+	url = ssh://git@github.com/microfarad-de/Button.git
+	branch = nixie-clock

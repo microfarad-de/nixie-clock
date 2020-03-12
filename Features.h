@@ -196,28 +196,6 @@ class AlarmClass {
 };
 
 
-/*
- * Push button implementation class
- */
-class ButtonClass {
-  public:
-    void press (void);
-    void release (void);
-    bool rising (void);
-    bool falling (void);
-    bool fallingLongPress (void);
-    bool fallingContinuous (void);
-    bool longPress (void); 
-    bool longPressContinuous (void); 
-
-    bool pressed = false;
-    bool wasPressed = false;
-    
-  private:
-    bool longPressed = false;
-    bool wasLongPressed = false;
-    uint32_t longPressTs = 0;
-};
 
 
 #endif // __FEATURES_H

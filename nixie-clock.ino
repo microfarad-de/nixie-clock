@@ -56,6 +56,7 @@
 #include <avr/wdt.h>
 #include "src/TimerOne/TimerOne.h"
 #include "src/TimerTwo/TimerTwo.h"
+#include "src/Button/Button.h"
 #include "src/Dcf/Dcf.h"
 #include "src/Adc/Adc.h"
 #include "src/Nvm/Nvm.h"
