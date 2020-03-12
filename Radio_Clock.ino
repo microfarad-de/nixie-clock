@@ -78,9 +78,9 @@
 
 // analog pins
 #define NUM_APINS  5        // total number of hardware analog pins in use for non-blocking ADC 
-#define BUTTON0_APIN A1     // button 0 - "mode"
+#define BUTTON0_APIN A2     // button 0 - "mode"
 #define BUTTON1_APIN A3     // button 1 - "increase"
-#define BUTTON2_APIN A2     // button 2 - "decrease"
+#define BUTTON2_APIN A1     // button 2 - "decrease"
 #define LIGHTSENS_APIN A0   // light sensor
 #define EXTPWR_APIN A6      // measures external power voltage
 #define VOLTAGE_APIN A7     // measures the retention super capacitor voltage
@@ -366,25 +366,32 @@ void loop() {
     Main.cppEffectEnabled = false;  
     cppCondition = false;
   }
-  if (Main.menuState != SHOW_TIME)  Main.cppEffectEnabled = false; // disable when pressing button 0
 
-  // disable Nixie display at a preset hour interval in order to extend the tube lifetime
-  if (hour != lastHour && (Settings.blankScreenMode == 1 || Settings.blankScreenMode == 2) ) {
-    if (hour == Settings.blankScreenStartHr  && 
-        (Settings.blankScreenMode != 2 || (wday >= 1 && wday <= 5) ) && Main.menuState != SET_HOUR) Main.menuState = SHOW_BLANK_E;
-    else if (hour == Settings.blankScreenFinishHr && Main.menuState == SHOW_BLANK) Main.menuState = SHOW_TIME_E;
-  }
-
-  // permanently disable Nixie Display
-  if (Settings.blankScreenMode == 3) {
-    if (!blankCondition && Main.menuState == SHOW_TIME) {  
+  Nixie.refresh ();
+  
+  // disable Nixie display at a preset hour interval in order to extend the Nixie tube lifetime (blankScreenMode = 1 or 2)
+  // or permanently disable Nixie Display (blankScreenMode = 3)
+  if (  Settings.blankScreenMode == 3 || (
+         (Settings.blankScreenMode == 1 || Settings.blankScreenMode == 2) && (
+           (Settings.blankScreenStartHr <= Settings.blankScreenFinishHr &&  hour >= Settings.blankScreenStartHr && hour < Settings.blankScreenFinishHr  ) ||
+           (Settings.blankScreenStartHr >  Settings.blankScreenFinishHr && (hour >= Settings.blankScreenStartHr || hour < Settings.blankScreenFinishHr) ) 
+         ) &&
+         (Settings.blankScreenMode != 2 || (wday >= 1 && wday <= 5) ) && !Main.cppEffectEnabled
+       ) 
+     ) {
+    if (!blankCondition && Main.menuState == SHOW_TIME) {
       Main.menuState = SHOW_BLANK_E;
       blankCondition = true;
-      //PRINTLN ("[loop] disable display");
     }
+    // re-enable blanking after leaving the time display or at the change of an hour 
     else if (Main.menuState == SHOW_SERVICE || (hour != lastHour && Main.menuState != SET_HOUR)) {
       blankCondition = false;
     }
+  }
+  // disable blanking if blanking blankScreenMode != 3, CPP is enabled or outside the preset time interval
+  else if (Main.menuState == SHOW_BLANK) {
+    Main.menuState = SHOW_TIME_E;
+    blankCondition = false;
   }
 
   Nixie.refresh ();  // refresh the Nixie tube display
@@ -710,7 +717,7 @@ void updateDigits () {
 void adcRead (void) {
   static uint8_t chanIdx = 0;
   static uint32_t lightsensTs = 0;
-  static int32_t avgVal[NUM_APINS];
+  static int32_t avgVal[NUM_APINS] = { 1023, 1023, 1023 };
   uint32_t ts;
   int16_t adcVal;
   uint8_t val;
@@ -741,8 +748,8 @@ void adcRead (void) {
     }
     // process button values
     else {
-      avgVal[chanIdx] = (avgVal[chanIdx] * 15 + (int32_t)adcVal) >> 4;             // IIR low-pass filtering for button debouncing
-      if (avgVal[chanIdx] > 512) {
+      avgVal[chanIdx] = (avgVal[chanIdx] * 7 + (int32_t)adcVal) >> 3;             // IIR low-pass filtering for button debouncing
+      if (avgVal[chanIdx] < 512) {
         if (Button[chanIdx].pressed == false) Nixie.resetBlinking(); // synchronize digit blinking with the rising edge of a button press
         Button[chanIdx].press (); 
       }
@@ -899,9 +906,8 @@ void settingsMenu (void) {
   static MenuState_e returnState = SHOW_TIME_E; 
   static int8_t menuIndex = 0;
   static const uint32_t scrollDelayDefault = 300, menuTimeoutDefault = 30*1000, menuTimeoutExtended = 180*60000, menuTimeoutNextState = 5*1000;
-  static uint32_t timeoutTs = 0, scrollTs = 0, brightnessTs = 0, /*settingsTs = 0,*/ accelTs = 0, bannerTs = 0;
+  static uint32_t timeoutTs = 0, scrollTs = 0, brightnessTs = 0, accelTs = 0, bannerTs = 0;
   static uint32_t scrollDelay = scrollDelayDefault, menuTimeout = menuTimeoutDefault, scrollCount = 0;
-  /*static bool brightnessAdjusted = false, settingsAdjusted = false;*/
   static NixieDigits_s valueDigits;
   static int8_t sIdx = 0, vIdx = 0;
   uint8_t i;
@@ -947,6 +953,8 @@ void settingsMenu (void) {
     }
   }
 
+  Nixie.refresh ();  // refresh the Nixie tube display
+
   // in time display mode, buttons 1 and 2 are used switching to the date and alarm modes 
   // or for adjusting display brightness when long-pressed
   if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM) {
@@ -954,27 +962,30 @@ void settingsMenu (void) {
     if (Button[1].rising () || Button[2].rising ()) {
       timeoutTs = ts;
     }
-    // button 1 - falling edge --> change state: SHOW_DATE->SHOW_ALARM->SHOW_TIME 
+    // button 1 - falling edge --> snooze alarm or change state: SHOW_DATE->SHOW_ALARM->SHOW_TIME 
     else if (Button[1].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
       else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_ALARM_E;
       else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_TIME_E;
     }
-    // button 2 - falling edge --> change state: SHOW_ALARM->SHOW_DATE->SHOW_TIME
+    // button 2 - falling edge --> snooze alarm or change state: SHOW_ALARM->SHOW_DATE->SHOW_TIME
     else if (Button[2].falling ()) {
       if (Alarm.alarm) Alarm.snooze ();
       else if (Main.menuState == SHOW_TIME) Main.menuState = SHOW_ALARM_E;
       else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
     }
+    /*else if (Alarm.alarm || Alarm.snoozing) {
+      // button 1 or 2 - long press --> reset alarm
+      if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
+    }*/
     else if ( Main.menuState == SHOW_TIME) {
       // button 1 - long press --> increase brightness
       if (Button[1].longPressContinuous () && ts - brightnessTs >= 15) {
         val8 = Brightness.increase (1);
         Nixie.setBrightness (val8);
         Nixie.refresh ();
-        /*brightnessAdjusted = true;*/
         brightnessTs = ts;
       }   
       // button 2 - long press --> decrease brightness
@@ -982,7 +993,6 @@ void settingsMenu (void) {
         val8 = Brightness.decrease (1);
         Nixie.setBrightness (val8);
         Nixie.refresh ();
-        /*brightnessAdjusted = true;*/
         brightnessTs = ts;
       }    
     }
@@ -995,6 +1005,7 @@ void settingsMenu (void) {
   if (Main.menuState <= SHOW_SERVICE || Main.menuState >= SET_HOUR || CdTimer.alarm || Alarm.alarm) {
     // button 0 - falling edge --> reset alarms or change state: nextState
     if (Button[0].falling ()) {
+      if (Main.cppEffectEnabled)  Main.cppEffectEnabled = false; // disable cathode poisoning prevention effect
       if (Alarm.alarm || CdTimer.alarm) {
         Alarm.snooze ();       // snooze the alarm clock
         CdTimer.resetAlarm (); // reset alarm of the countdown timer feature
@@ -1006,10 +1017,10 @@ void settingsMenu (void) {
     }
   }
 
-  // in selected modes modes, long-pressing button 0 shall return to the pre-defined return display mode
+  // in selected modes, long-pressing button 0 shall switch to the pre-defined display mode
   // when the alarm clock is snoozed or active, long-pressing button 0 will cancel the alarm
   if (Main.menuState == SHOW_TIME || Main.menuState == SHOW_DATE || Main.menuState == SHOW_ALARM ||
-      Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM || Alarm.alarm || Alarm.snoozing) {
+      Main.menuState == SHOW_SERVICE || Main.menuState >= SET_ALARM) {
     // button 0 - long press --> reset alarm or change state: returnState 
     if (Button[0].longPress ()) {
       if (Alarm.alarm || Alarm.snoozing) Alarm.resetAlarm ();  // stop the alarm clock
@@ -1019,21 +1030,6 @@ void settingsMenu (void) {
 
 
   Nixie.refresh ();  // refresh the Nixie tube display
-
-  /*// write-back brightness values lookup table to EEPROM
-  if (brightnessAdjusted && ts - brightnessTs > 30000) {
-    Nixie.blank ();             // turn off display to avoid ugly blinking due to slow EEPROM write
-    Brightness.eepromWrite ();
-    brightnessAdjusted = false;
-  }
-
-  // write-back settings values to EEPROM
-  if (settingsAdjusted && ts - settingsTs > 10000) {
-    Nixie.blank ();
-    eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
-    settingsAdjusted = false;
-    PRINTLN ("[settingsMenu] write EEPROM");
-  }*/
 
   // timeout --> change state: SHOW_TIME
   if (Main.menuState != SHOW_BLANK_E && Main.menuState != SHOW_BLANK && Main.menuState != SHOW_TIME) {
@@ -1117,8 +1113,6 @@ void settingsMenu (void) {
         Alarm.toggleActive ();
         Alarm.resetAlarm ();
         CdTimer.resetAlarm ();
-        /*settingsAdjusted = true; // trigger deferred EEPROM write
-        settingsTs = ts;*/
       }
       break;
 
@@ -1307,8 +1301,6 @@ void settingsMenu (void) {
           valueDigits.value[0]  = BUILD_YEAR_CH3 - '0';
           Nixie.scroll (); 
         }   
-        /*settingsAdjusted = true; // trigger deferred EEPROM write
-        settingsTs = ts;*/
       }
       // scroll the display every x seconds
       if (ts - bannerTs > 6000) Nixie.scroll (), bannerTs = ts; 
@@ -1374,8 +1366,6 @@ void settingsMenu (void) {
           else if (sIdx == 2) Alarm.toggleWeekdays ();
           else if (sIdx == 3) Alarm.toggleActive ();
           scrollTs = ts;
-          /*settingsAdjusted = true; // trigger deferred EEPROM write
-          settingsTs = ts;*/
         }   
       }
       // button 2 - pressed --> decrease value
@@ -1387,8 +1377,6 @@ void settingsMenu (void) {
           else if (sIdx == 2) Alarm.toggleWeekdays ();
           else if (sIdx == 3) Alarm.toggleActive ();
           scrollTs = ts;
-          /*settingsAdjusted = true; // trigger deferred EEPROM write
-          settingsTs = ts;*/
         }   
       }
       break;
@@ -1434,8 +1422,6 @@ void settingsMenu (void) {
           valueDigits.value[0] = dec2bcdLow (*SettingsLut[sIdx].value);
           Nixie.refresh ();
           scrollTs = ts;
-          /*settingsAdjusted = true; // trigger deferred EEPROM write
-          settingsTs = ts;*/
         }   
       }
       // button 2 - pressed --> decrease value
@@ -1450,8 +1436,6 @@ void settingsMenu (void) {
           valueDigits.value[0] = dec2bcdLow (*SettingsLut[sIdx].value);
           Nixie.refresh ();
           scrollTs = ts;
-          /*settingsAdjusted = true; // trigger deferred EEPROM write
-          settingsTs = ts;*/
         }   
       }
       

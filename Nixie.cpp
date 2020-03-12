@@ -9,7 +9,7 @@
 
 
 #define DIGIT_PERIOD        3000
-#define MAX_ON_DURATION     2200
+#define MAX_ON_DURATION     2680
 #define BLINK_PERIOD        500000
 #define SCROLL_PERIOD_1     1000000
 #define SCROLL_PERIOD_2     300000
