@@ -20,4 +20,3 @@
 [submodule "src/Button"]
 	path = src/Button
 	url = ssh://git@github.com/microfarad-de/Button.git
-	branch = nixie-clock
