@@ -90,7 +90,7 @@ void NixieClass::refresh (void) {
       while (bcdVal > 9) bcdVal -= 10; 
     }
 
-    commaVal = digits->comma[digit + scrollOffset] || comma[digit] || cppEnabled;
+    commaVal = digits->comma[digit + scrollOffset] || comma[digit] || cppEnabled || slotMachineEnabled[digit];
     anodeVal = !(blinkFlag && (digits->blnk[digit + scrollOffset] || blinkAllEnabled)) && !digits->blank[digit + scrollOffset];
 
     // decimal point shall never be blanked

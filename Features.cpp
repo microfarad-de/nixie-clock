@@ -163,7 +163,7 @@ void CdTimerClass::loopHandler (void) {
 }
 
 void CdTimerClass::tick (void) {
-  if (active) {
+  if (running) {
     alarm = tm.decrementSec (); 
     tickFlag = true;
   }

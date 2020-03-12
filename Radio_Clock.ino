@@ -94,7 +94,7 @@
 #define EEPROM_SETTINGS_ADDR 0                   // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE 3                   // size of the dynamic menu ordering list
-#define SETTINGS_LUT_SIZE 15                     // size of the settings lookup table
+#define SETTINGS_LUT_SIZE 14                     // size of the settings lookup table
 
 // conversion macros
 #define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
@@ -124,10 +124,10 @@ struct Settings_t {
   uint8_t blankScreenMode;                         // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
   uint8_t blankScreenStartHr;                      // start hour for disabling the display
   uint8_t blankScreenFinishHr;                     // finish hour for disabling the display
-  bool cathodePoisonPrevent;                       // enables cathode poisoning prevention measure by cycling through all digits
+  uint8_t cathodePoisonPrevent;                    // enables cathode poisoning prevention measure by cycling through all digits (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
   uint8_t cppStartHr;                              // start hour for the cathode poisoning prevention measure
   int8_t secPerDayCorrect;                         // manual Timer1 drift correction in seconds per day
-  bool slotMachineEveryMinute;                     // Nixie digit "Slot Machine" effect is triggered every minute
+  uint8_t reserved0;                               // reserved for future use
   bool brightnessAutoAdjust;                       // enables the brightness auto-adjustment feature
   bool brightnessBoost;                            // enables the brightness boosting feature
   uint8_t blankScreenMode2;                        // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
@@ -157,15 +157,14 @@ struct {
   { (int8_t *)&Settings.blankScreenMode2,       2, 0,     0,    3,     0 }, // screen blanking (second profile)
   { (int8_t *)&Settings.blankScreenStartHr2,    2, 1,     0,   23,     2 }, //  - start hour
   { (int8_t *)&Settings.blankScreenFinishHr2,   2, 2,     0,   23,     6 }, //  - finish hour
-  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 0, false, true,  true }, // cathode poisoning prevention
+  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 0,     0,    3,     1 }, // cathode poisoning prevention
   { (int8_t *)&Settings.cppStartHr,             3, 1,     0,   23,     4 }, //  - start hour
-  { (int8_t *)&Settings.dcfSyncEnabled,         4, 0, false, true,  true }, // DCF sync
-  { (int8_t *)&Settings.dcfSignalIndicator,     4, 1, false, true,  true }, //  - signal indicator
-  { (int8_t *)&Settings.dcfSyncHour,            4, 2,     0,   23,     3 }, //  - sync hour
-  { (int8_t *)&Settings.brightnessAutoAdjust,   5, 0, false, true,  true }, // brightness auto adjust
-  { (int8_t *)&Settings.brightnessBoost,        5, 1, false, true,  true }, //  - brighntess boost
-  { (int8_t *)&Settings.slotMachineEveryMinute, 6, 0, false, true, false }, // "slot machine" effect 
-  { (int8_t *)&Settings.secPerDayCorrect,       7, 0,   -99,   99,     0 }  // clock drift correction (seconds per day)
+  { (int8_t *)&Settings.brightnessAutoAdjust,   4, 0, false, true,  true }, // brightness auto adjust
+  { (int8_t *)&Settings.brightnessBoost,        4, 1, false, true,  true }, //  - brighntess boost
+  { (int8_t *)&Settings.dcfSyncEnabled,         5, 0, false, true,  true }, // DCF sync
+  { (int8_t *)&Settings.dcfSignalIndicator,     5, 1, false, true,  true }, //  - signal indicator
+  { (int8_t *)&Settings.dcfSyncHour,            5, 2,     0,   23,     3 }, //  - sync hour
+  { (int8_t *)&Settings.secPerDayCorrect,       6, 0,   -99,   99,     0 }  // clock drift correction (seconds per day)
 };
 
 /*
@@ -370,7 +369,7 @@ void loop() {
                     // refresh method is called many times across the code to ensure smooth display operation
 
   // enable cathode poisoning prevention effect at a preset hour
-  if (Settings.cathodePoisonPrevent && hour == Settings.cppStartHr && Main.menuState != SET_HOUR) {
+  if (Settings.cathodePoisonPrevent == 1 && hour == Settings.cppStartHr && Main.menuState != SET_HOUR) {
     if (!cppCondition) {
       Main.cppEffectEnabled = true;
       cppCondition = true;
@@ -741,11 +740,11 @@ void updateDigits () {
   
   if (Main.menuState == SHOW_TIME) {
     // trigger Nixie digit "Slot Machine" effect
-    if (Settings.slotMachineEveryMinute && Main.systemTm->tm_min != lastMin) {
+    if (Main.systemTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && Main.timeDigits.value[2] == 0))) {
       Nixie.slotMachine();
     }
     // trigger the cathode poisoning prevention routine
-    if (Settings.cathodePoisonPrevent && Main.cppEffectEnabled && Main.timeDigits.value[0] == 0) {
+    if (Settings.cathodePoisonPrevent == 1 && Main.cppEffectEnabled && Main.timeDigits.value[0] == 0) {
       Nixie.setBrightness (Brightness.maximum ());
       Nixie.cathodePoisonPrevent ();
     }
