@@ -20,3 +20,6 @@
 [submodule "src/Button"]
 	path = src/Button
 	url = ssh://git@github.com/microfarad-de/Button.git
+[submodule "arduino-mk"]
+	path = arduino-mk
+	url = ssh://git@github.com/sudar/Arduino-Makefile

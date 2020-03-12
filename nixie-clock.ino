@@ -268,6 +268,22 @@ StopwatchClass Stopwatch;      // stopwatch object
 
 
 /***********************************
+ * Function prototypes
+ ***********************************/
+void timer1ISR (void);
+void timer2ISR (void);
+void featureCallback (bool);
+void syncToDCF (void);
+void timerCalibrate (time_t, int32_t);
+void updateDigits (void);
+void adcRead (void);
+void powerSave (void);
+void reorderMenu (int8_t);
+void settingsMenu (void);
+
+
+
+/***********************************
  * Arduino setup routine
  ***********************************/
 void setup() {
