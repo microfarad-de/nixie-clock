@@ -152,6 +152,8 @@ void CdTimerClass::loopHandler (void) {
       Nixie.resetBlinking ();
       Nixie.blinkAll (true);
       Buzzer.playMelody2 ();
+      tm.copy (&defaultTm);
+      displayRefresh ();
       alarmTs = ts;
     }
     tickFlag = false;
@@ -210,7 +212,6 @@ void CdTimerClass::displayRefresh (void) {
 
 void CdTimerClass::start (void) {
   defaultTm.copy (&tm);
-  defaultTm.roundup ();
   active = true;
   running = true;
   callback (true);  
@@ -235,6 +236,7 @@ void CdTimerClass::reset (void) {
   running = false;
   Nixie.resetDigits (&digits);
   callback (false);
+  defaultTm.roundup ();
   tm.copy (&defaultTm);
   displayRefresh ();
 }
@@ -329,12 +331,12 @@ void AlarmClass::initialize (AlarmEeprom_s * settings) {
   displayRefresh ();
 }
 
-void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool ignore) {
+void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool active) {
   static int8_t lastMinute = 0;
   static uint32_t blinkTs = 0;
   uint32_t ts = millis ();
 
-  if (!ignore && !snoozing && settings->active && minute != lastMinute &&
+  if (active && !snoozing && settings->active && minute != lastMinute &&
       minute == settings->minute && hour == settings->hour && (!settings->weekdays || (wday >= 1 && wday <= 5) ) ) startAlarm (); 
 
   if (snoozing && ts - snoozeTs > ALARM_SNOOZE_DURATION) {

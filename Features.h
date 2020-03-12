@@ -139,7 +139,7 @@ struct AlarmEeprom_s {
 class AlarmClass {
   public:
     void initialize (AlarmEeprom_s * settings);
-    void loopHandler (int8_t hour, int8_t minute, int8_t wday, bool ignore);
+    void loopHandler (int8_t hour, int8_t minute, int8_t wday, bool active);
     void toggleActive (void); 
     void toggleWeekdays (void);
     void startAlarm (void);

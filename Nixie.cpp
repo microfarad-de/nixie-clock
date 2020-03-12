@@ -8,11 +8,13 @@
 #include "Nixie.h"
 
 
-#define DIGIT_PERIOD    3000
-#define MAX_ON_DURATION 2200
-#define BLINK_PERIOD    500000
-#define SCROLL_PERIOD_1 1000000
-#define SCROLL_PERIOD_2 300000
+#define DIGIT_PERIOD        3000
+#define MAX_ON_DURATION     2200
+#define BLINK_PERIOD        500000
+#define SCROLL_PERIOD_1     1000000
+#define SCROLL_PERIOD_2     300000
+#define SLOT_MACHINE_PERIOD 40000
+#define CPP_PERIOD          200000
 
 
 NixieClass Nixie;
@@ -82,13 +84,14 @@ void NixieClass::refresh (void) {
     
     bcdVal = digits->value[digit + scrollOffset];
 
-    if (slotMachineEnabled[digit]) {
-      // produce "Slot Machine" effect
-      bcdVal += slotMachineCnt[digit];
+    if (slotMachineEnabled[digit] || cppEnabled) {
+      // produce "Slot Machine" or CPP effect 
+      bcdVal += slotMachineCnt[digit] + cppCnt;
       while (bcdVal > 9) bcdVal -= 10; 
     }
 
-    commaVal = digits->comma[digit + scrollOffset] || comma[digit];
+
+    commaVal = digits->comma[digit + scrollOffset] || comma[digit] || cppEnabled;
     anodeVal = !(blinkFlag && (digits->blnk[digit + scrollOffset] || blinkAllEnabled)) && !digits->blank[digit + scrollOffset];
 
     // decimal point shall never be blanked
@@ -108,7 +111,7 @@ void NixieClass::refresh (void) {
   // turn off all opto-coupler controlled pins ahead of time, this avoids ghost numbers
   // also control brightness by reducing anode on time
   // reduce on duration by dimFactor for decimal points without digits
-  else if (ts - lastTs >= (digitOnDuration >> dimFactor)) {
+  else if (ts - lastTs >= (digitOnDuration >> dimFactor) * !fullBrightness + MAX_ON_DURATION * fullBrightness) {
     
     digitalWrite (anodePin[digit], LOW);  
     digitalWrite (commaPin, LOW); 
@@ -127,11 +130,21 @@ void NixieClass::refresh (void) {
       slotMachineCnt[digit]++;
       if (slotMachineCnt[digit] >= slotMachineCntMax[digit]) {
         slotMachineEnabled[digit] = false;
+        slotMachineCnt[digit] = 0;
       }
-      slotMachineDelay[digit] = 40000;
+      slotMachineDelay[digit] = SLOT_MACHINE_PERIOD;
       slotMachineTs[digit] = ts;
     }
   }  
+
+  // generate cathode poisoning prevention effect
+  if (cppEnabled) {
+    if (ts - cppTs > CPP_PERIOD) {
+      cppCnt++;
+      if (cppCnt >= 20) cppEnabled = false, fullBrightness = false, cppCnt = 0;
+      cppTs = ts;
+    }
+  }
 
   // scroll through the digits buffer
   if (scrollOffset > 0) {
@@ -164,6 +177,13 @@ void NixieClass::slotMachine (void) {
     slotMachineCnt[i] = slotMachineCntStart[i];
     slotMachineDelay[i] = 0;
   }
+}
+
+void NixieClass::cathodePoisonPrevent (void) {
+  cppEnabled = true;
+  fullBrightness = true;
+  cppCnt = 0;
+  cppTs = micros () - CPP_PERIOD;
 }
 
 void NixieClass::scroll (void) {

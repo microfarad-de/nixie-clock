@@ -105,6 +105,11 @@ class NixieClass {
     void slotMachine (void);
 
     /*
+     * Exectue cathode poisoniong prevention sequence
+     */
+    void cathodePoisonPrevent (void);
+
+    /*
      * Scroll once through the digit buffer
      */
     void scroll (void);
@@ -177,10 +182,14 @@ class NixieClass {
     uint32_t slotMachineTs[NIXIE_MAX_NUM_TUBES] = { 0 };
     uint8_t slotMachineCnt[NIXIE_MAX_NUM_TUBES] = { 0 };
     uint32_t slotMachineDelay[NIXIE_MAX_NUM_TUBES] = { 0 };
-    uint8_t slotMachineCntStart[NIXIE_MAX_NUM_TUBES] = { 15, 13, 11,  9,  7,  5 };
-    uint8_t slotMachineCntMax[NIXIE_MAX_NUM_TUBES]   = { 70, 60, 50, 40, 30, 20 };
+    uint8_t slotMachineCntStart[NIXIE_MAX_NUM_TUBES] = { 11,  9,  7,  5, 13, 15 };
+    uint8_t slotMachineCntMax[NIXIE_MAX_NUM_TUBES]   = { 50, 40, 30, 20, 60, 70 };
+    bool cppEnabled = false;
+    uint32_t cppTs = 0;
+    uint8_t cppCnt = 0;
     uint32_t scrollTs = 0;
     int8_t scrollOffset = 0;
+    bool fullBrightness = false;
 };
 
 
