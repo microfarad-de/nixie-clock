@@ -407,7 +407,7 @@ void loop() {
       blankCondition = true;
     }
     // re-enable blanking after switching to the service display or at the change of an hour 
-    else if (Main.menuState == SHOW_SERVICE || (hour != lastHour && Main.menuState != SET_HOUR)) {
+    else if (Main.menuState == SHOW_SERVICE || ( Main.menuState != SHOW_BLANK && Main.menuState != SET_HOUR  && hour != lastHour) ) {
       blankCondition = false;
     }
   }

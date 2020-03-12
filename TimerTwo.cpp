@@ -42,9 +42,9 @@ void TimerTwo::setPeriod(long microseconds)
   TCCR2B |= clockSelectBits;                                                     
 }
 
-void TimerTwo::attachInterrupt(void (*isr)(), long microsecondsTimes8)
+void TimerTwo::attachInterrupt(void (*isr)(), long microseconds)
 {
-  if(microsecondsTimes8 > 0) setPeriod(microsecondsTimes8);
+  if(microseconds > 0) setPeriod(microseconds);
   isrCallback = isr;                                       // register the user's callback with the real ISR
   TIMSK2 = _BV(TOIE2);                                     // sets the timer overflow interrupt enable bit
   sei();                                                   // ensures that interrupts are globally enabled

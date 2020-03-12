@@ -31,9 +31,9 @@ class TimerTwo
     void start();
     void stop();
     void restart();
-    void attachInterrupt(void (*isr)(), long microsecondsTimes8=-1);
+    void attachInterrupt(void (*isr)(), long microseconds=-1);
     void detachInterrupt();
-    void setPeriod(long microsecondsTimes8);
+    void setPeriod(long microseconds);
     void (*isrCallback)();
 };
 
