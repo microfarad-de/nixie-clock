@@ -348,14 +348,15 @@ void loop() {
 
   // actions to be executed once every second
   if (Main.timer1TickFlag) {
+    cli();
+    // get the current time
+    sysTime = time (NULL);
+    Main.systemTm = localtime (&sysTime);
+    sei();
     updateDigits ();  // update the Nixie display digits    
     Main.timer1TickFlag = false;    
   }
                     
-  // get the current time
-  cli ();
-  sysTime = time (NULL);
-  sei ();
   lastHour = hour;
   hour = Main.systemTm->tm_hour;
   minute = Main.systemTm->tm_min;
@@ -724,8 +725,7 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
  ***********************************/
 void updateDigits () {
   static int8_t lastMin = 0;
-  time_t sysTime = time (NULL);
-  Main.systemTm = localtime (&sysTime);
+  
   // check whether current state requires time or date display
   Main.timeDigits.value[0] = dec2bcdLow  (Main.systemTm->tm_sec);
   Main.timeDigits.value[1] = dec2bcdHigh (Main.systemTm->tm_sec);
@@ -964,6 +964,7 @@ void settingsMenu (void) {
   static uint32_t scrollDelay = scrollDelayDefault, menuTimeout = menuTimeoutDefault, scrollCount = 0;
   static NixieDigits_s valueDigits;
   static int8_t sIdx = 0, vIdx = 0;
+  static bool brightnessEnable = false;
   uint8_t i;
   uint8_t valU8;
   int8_t val8;
@@ -1016,6 +1017,7 @@ void settingsMenu (void) {
     // button 1  or 2- rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()) {
       timeoutTs = ts;
+      brightnessEnable = true;
     }
     // button 1 - falling edge --> snooze alarm or change state: SHOW_DATE->SHOW_ALARM->SHOW_TIME 
     else if (Button[1].falling ()) {
@@ -1031,13 +1033,14 @@ void settingsMenu (void) {
       else if (Main.menuState == SHOW_ALARM) Main.menuState = SHOW_DATE_E;
       else if (Main.menuState == SHOW_DATE) Main.menuState = SHOW_TIME_E;
     }
-    /*else if (Alarm.alarm || Alarm.snoozing) {
+    else if (Alarm.alarm || Alarm.snoozing) {
       // button 1 or 2 - long press --> reset alarm
       if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
-    }*/
+      brightnessEnable = false;
+    }
     else if ( Main.menuState == SHOW_TIME) {
       // button 1 or 2 - long press --> increase/decrease brightness
-      if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50) {
+      if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50 && brightnessEnable) {
         if (Button[1].pressed) valU8 = Brightness.increase ();
         else                   valU8 = Brightness.decrease ();
         Nixie.setBrightness (valU8);

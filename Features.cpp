@@ -339,10 +339,7 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
       (settings->mode != ALARM_WEEKDAYS || (wday >= 1 && wday <= 5)) && 
       (settings->mode != ALARM_WEEKENDS || wday == 0 || wday == 6)) startAlarm (); 
 
-  if (snoozing && ts - snoozeTs > ALARM_SNOOZE_DURATION) {
-    snoozing = false; 
-    startAlarm ();
-  }
+  if (snoozing && ts - snoozeTs > ALARM_SNOOZE_DURATION) startAlarm ();
 
   if (snoozing && ts - blinkTs > 500) {
     Nixie.comma[0] = !Nixie.comma[0];
@@ -360,6 +357,7 @@ void AlarmClass::startAlarm (void) {
   Nixie.blinkAll (true);
   Buzzer.playMelody1 ();
   alarmTs = millis ();
+  snoozing = false;
   displayRefresh ();
 }
 
