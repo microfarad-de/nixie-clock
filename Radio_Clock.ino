@@ -328,7 +328,6 @@ void loop() {
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
   time_t sysTime;
   
-
 /* #ifdef SERIAL_DEBUG
   // measure main loop duration
   static uint32_t ts, lastTs;
@@ -1192,16 +1191,16 @@ void settingsMenu (void) {
       // button 1 - falling edge --> increment minutes / arm countdown timer
       else if (Button[1].falling ()) {
         if (!CdTimer.active) Stopwatch.reset ();
-        CdTimer.minuteIncrease ();
-        CdTimer.resetAlarm ();
+        if (CdTimer.alarm) CdTimer.resetAlarm ();
+        else               CdTimer.minuteIncrease ();  
         nextState = SHOW_TIME_E;
         reorderMenu (menuIndex);
       }
       // button 2 - falling edge --> decrement minutes / arm countdown timer
       else if (Button[2].falling ()) {
         if (!CdTimer.active) Stopwatch.reset ();
-        CdTimer.minuteDecrease ();
-        CdTimer.resetAlarm ();
+        if (CdTimer.alarm) CdTimer.resetAlarm ();
+        else               CdTimer.minuteDecrease ();
         nextState = SHOW_TIME_E;
         reorderMenu (menuIndex);
       }
@@ -1267,20 +1266,13 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SHOW_SERVICE_E:
       Nixie.resetDigits (&valueDigits);
-      Nixie.setDigits (&valueDigits);
-      valueDigits.numDigits = 8;
-      cli ();
-      Nixie.dec2bcd (Settings.nixieUptime / 3600, &valueDigits, 6);
-      sei ();
-      valueDigits.value[7] = 1;
-      valueDigits.comma[7] = true;
-      valueDigits.blank[6] = true;
-      Nixie.scroll ();
+      Nixie.setDigits (&valueDigits);   
       bannerTs = ts;
       vIdx = 0;
       nextState = SHOW_TIME_E;
       returnState = SET_SETTINGS_E;
       Main.menuState = SHOW_SERVICE;
+      goto SHOW_SERVICE_ENTRY_POINT;
     case SHOW_SERVICE:      
       // button 1 or 2 rising edge --> cycle back and forth between system parameters
       if (Button[1].rising () || Button[2].rising ()){
@@ -1294,26 +1286,26 @@ void settingsMenu (void) {
         else if (Button[2].pressed) {
           vIdx--; if (vIdx < 0) vIdx = 2;
         }
-        
+        SHOW_SERVICE_ENTRY_POINT:
         // show Nixie tube uptime
         if (vIdx == 0) {
-          valueDigits.numDigits = 8;
-          cli ();
-          Nixie.dec2bcd (Settings.nixieUptime / 3600, &valueDigits, 6);
-          sei ();
-          valueDigits.value[7] = 1;
-          valueDigits.comma[7] = true;
-          valueDigits.blank[6] = true;
+          valueDigits.numDigits = 9;
+          Nixie.dec2bcd (Settings.timer1Period, &valueDigits, 7);
+          valueDigits.value[8] = 1;
+          valueDigits.comma[8] = true;
+          valueDigits.blank[7] = true;
           Nixie.scroll (); 
         }
         // show firmware version
         else if (vIdx == 1) {
-          valueDigits.numDigits = 9;
-          Nixie.dec2bcd (Settings.timer1Period, &valueDigits, 7);
-          valueDigits.value[8] = 2;
-          valueDigits.comma[8] = true;
-          valueDigits.blank[7] = true;
-          Nixie.scroll (); 
+          valueDigits.numDigits = 8;
+          cli ();
+          Nixie.dec2bcd (Settings.nixieUptime / 3600, &valueDigits, 6);
+          sei ();
+          valueDigits.value[7] = 2;
+          valueDigits.comma[7] = true;
+          valueDigits.blank[6] = true;
+          Nixie.scroll ();   
         }
         // show Timer1 period (default)
         else if (vIdx == 2) {
@@ -1344,10 +1336,11 @@ void settingsMenu (void) {
       Main.menuState = SHOW_BLANK;
     case SHOW_BLANK:
       // button 0, 1 or 2 - rising edge --> catch rising edge
-      if (Button[0].rising () || Button[1].rising () || Button[2].rising ()) {
-      }
+      Button[0].rising ();
+      Button[1].rising ();
+      Button[2].rising ();
       // button 0, 1 or 2 - falling edge --> re-activate display
-      else if (Button[0].falling () || Button[1].falling () || Button[2].falling ()) {
+      if (Button[0].falling () || Button[1].falling () || Button[2].falling ()) {
         Main.menuState = SHOW_TIME_E;
       }
       break;
