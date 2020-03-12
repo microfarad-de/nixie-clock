@@ -111,7 +111,7 @@ void NixieClass::refresh (void) {
   // turn off all opto-coupler controlled pins ahead of time, this avoids ghost numbers
   // also control brightness by reducing anode on time
   // reduce on duration by dimFactor for decimal points without digits
-  else if (ts - lastTs >= (digitOnDuration >> dimFactor) * !fullBrightness + MAX_ON_DURATION * fullBrightness) {
+  else if (ts - lastTs >= (digitOnDuration >> dimFactor)) {
     
     digitalWrite (anodePin[digit], LOW);  
     digitalWrite (commaPin, LOW); 
@@ -132,7 +132,7 @@ void NixieClass::refresh (void) {
         slotMachineEnabled[digit] = false;
         slotMachineCnt[digit] = 0;
       }
-      slotMachineDelay[digit] = SLOT_MACHINE_PERIOD;
+      slotMachineDelay[digit] = SLOT_MACHINE_PERIOD + 10 * (uint32_t)slotMachineCnt[digit] * (uint32_t)slotMachineCnt[digit];
       slotMachineTs[digit] = ts;
     }
   }  
@@ -141,7 +141,7 @@ void NixieClass::refresh (void) {
   if (cppEnabled) {
     if (ts - cppTs > CPP_PERIOD) {
       cppCnt++;
-      if (cppCnt >= 20) cppEnabled = false, fullBrightness = false, cppCnt = 0;
+      if (cppCnt >= 20) cppEnabled = false,  cppCnt = 0;
       cppTs = ts;
     }
   }
@@ -181,7 +181,6 @@ void NixieClass::slotMachine (void) {
 
 void NixieClass::cathodePoisonPrevent (void) {
   cppEnabled = true;
-  fullBrightness = true;
   cppCnt = 0;
   cppTs = micros () - CPP_PERIOD;
 }

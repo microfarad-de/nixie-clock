@@ -178,10 +178,9 @@ class ButtonClass {
     bool longPressContinuous (void); 
 
     bool pressed = false;
+    bool wasPressed = false;
     
   private:
-    
-    bool wasPressed = false;
     bool longPressed = false;
     bool wasLongPressed = false;
     uint32_t longPressTs = 0;

@@ -91,23 +91,23 @@
 // various constants
 #define TIMER1_DEFUALT_PERIOD 1000000            // default period for Timer1 (1 second)
 #define WDT_TIMEOUT WDTO_4S                      // watcchdog timer timeout setting
-#define EEPROM_SETTINGS_ADDR 0                   // EEPROM address of the Timer1 period
+#define EEPROM_SETTINGS_ADDR 0                   // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE 3                   // size of the dynamic menu ordering list
 
 // conversion macros
 #define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
-#define SEC_PER_DAY_TO_TIMER1(VAL) (uint32_t)(TIMER1_DEFUALT_PERIOD - VAL * 1000000 / 86400)     // calculate the Timer1 period from the seconds-per-day clock drift
+#define SEC_PER_DAY_TO_TIMER1(VAL) (uint32_t)(TIMER1_DEFUALT_PERIOD - VAL * 1000000 / 86400)  // calculate the Timer1 period from the seconds-per-day clock drift
+
 
 /*
  * Enumerations for the states of the menu navigation state machine
+ * the program relies on the exact order of the below definitions
  */
 enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_ALARM_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
                    SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,   SET_MIN_E,    SET_SEC_E,        SET_DAY_E,      SET_MONTH_E,  SET_YEAR_E, 
                    SHOW_TIME,   SHOW_DATE,      SHOW_ALARM,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
                    SET_ALARM,   SET_SETTINGS,   SET_HOUR,     SET_MIN,      SET_SEC,          SET_DAY,        SET_MONTH,    SET_YEAR };
-
-
 
 
 /*
@@ -139,7 +139,7 @@ struct Settings_t {
 
 /*
  * Lookup table that maps the individual system settings 
- * to their allowed values and IDs  
+ * to their ranges and IDs  
  */
 struct {
   int8_t *value;     // pointer to the value variable
@@ -150,19 +150,18 @@ struct {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] = 
 {
-  { (int8_t *)&Settings.blankScreenMode,        1, 0,     0,    3,     0 },
-  { (int8_t *)&Settings.blankScreenStartHr,     1, 1,     0,   23,     2 },
-  { (int8_t *)&Settings.blankScreenFinishHr,    1, 2,     0,   23,     6 },
-  { (int8_t *)&Settings.cathodePoisonPrevent,   2, 0, false, true,  true },
-  { (int8_t *)&Settings.cppStartHr,             2, 1,     0,   23,     4 },
-  { (int8_t *)&Settings.dcfSyncEnabled,         3, 0, false, true,  true },
-  { (int8_t *)&Settings.dcfSignalIndicator,     3, 1, false, true,  true },
-  { (int8_t *)&Settings.dcfSyncHour,            3, 2,     0,   23,     3 },
-  { (int8_t *)&Settings.secPerDayCorrect,       4, 0,   -99,   99,     0 },
-  { (int8_t *)&Settings.slotMachineEveryMinute, 5, 0, false, true, false },
-  { (int8_t *)&Settings.brightnessAutoAdjust,   6, 0, false, true,  true },
-  { (int8_t *)&Settings.brightnessBoost,        6, 1, false, true,  true }
-  
+  { (int8_t *)&Settings.blankScreenMode,        1, 0,     0,    3,     0 }, // screen blanking
+  { (int8_t *)&Settings.blankScreenStartHr,     1, 1,     0,   23,     2 }, //  - start hour
+  { (int8_t *)&Settings.blankScreenFinishHr,    1, 2,     0,   23,     6 }, //  - finish hour
+  { (int8_t *)&Settings.cathodePoisonPrevent,   2, 0, false, true,  true }, // cathode poisoning prevention
+  { (int8_t *)&Settings.cppStartHr,             2, 1,     0,   23,     4 }, //  - start hour
+  { (int8_t *)&Settings.dcfSyncEnabled,         3, 0, false, true,  true }, // DCF sync
+  { (int8_t *)&Settings.dcfSignalIndicator,     3, 1, false, true,  true }, //  - signal indicator
+  { (int8_t *)&Settings.dcfSyncHour,            3, 2,     0,   23,     3 }, //  - sync hour
+  { (int8_t *)&Settings.brightnessAutoAdjust,   4, 0, false, true,  true }, // brightness auto adjust
+  { (int8_t *)&Settings.brightnessBoost,        4, 1, false, true,  true }, //  - brighntess boost
+  { (int8_t *)&Settings.slotMachineEveryMinute, 5, 0, false, true, false }, // "slot machine" effect 
+  { (int8_t *)&Settings.secPerDayCorrect,       6, 0,   -99,   99,     0 }  // clock drift correction (seconds per day)
 };
 
 /*
@@ -199,20 +198,14 @@ class MainClass {
     
 } Main;
 
+/*
+ * Various objects
+ */
 ButtonClass Button[NUM_APINS]; // array of push button objects
 AlarmClass Alarm;              // alarm clock object
 CdTimerClass CdTimer;          // countdown timer object
 StopwatchClass Stopwatch;      // stopwatch object
 
-// countdown timer and stopwatch callback function
-void featureCallback (bool start) {
-  if (start) {
-    Timer2.start ();
-  }
-  else {
-    cli (); Timer2.stop (); Timer2.restart (); sei (); Main.timer2SecCounter = 0; Main.timer2TenthCounter = 0;   
-  }
-}
 
 
 
@@ -303,9 +296,10 @@ void setup() {
 
   // initialize the brightness control algorithm
   Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
+  Brightness.autoEnable (Settings.brightnessAutoAdjust);
  
 #ifndef SERIAL_DEBUG
-  // initialize the Buzzer driver (re-uses serial communication pin)
+  // initialize the Buzzer driver (requires serial communication pin)
   Buzzer.initialize (BUZZER_PIN);
   // enable/disable the brightness boost feature (requires serial communication pin)
   Brightness.boostEnable (Settings.brightnessBoost);
@@ -469,6 +463,7 @@ void loop() {
 
 
 
+
 /***********************************
  * Timer ISR
  * Triggered once every second by Timer 1
@@ -526,7 +521,6 @@ void timer2ISR () {
 /*********/
 
 
-
 /***********************************
  * Watchdog expiry ISR
  * takes over system ticking during Deep Sleep
@@ -535,6 +529,29 @@ ISR (WDT_vect)  {
   system_tick ();
 }
 /*********/
+
+
+/*********************************** 
+ * Countdown timer and stopwatch callback function 
+ ***********************************/
+void featureCallback (bool start) {
+  if (start) {
+    Timer2.start ();
+  }
+  else {
+    cli (); 
+    Timer2.stop (); 
+    Timer2.restart (); 
+    sei (); 
+    Main.timer2SecCounter = 0; 
+    Main.timer2TenthCounter = 0;   
+  }
+}
+/*********/
+
+
+
+
 
 
 /***********************************
@@ -701,19 +718,20 @@ void updateDigits () {
   Main.dateDigits.value[4] = dec2bcdLow  (Main.systemTm->tm_mday);
   Main.dateDigits.value[5] = dec2bcdHigh (Main.systemTm->tm_mday); 
 
-  // trigger Nixie digit "Slot Machine" effect
+  
   if (Main.menuState == SHOW_TIME) {
+    // trigger Nixie digit "Slot Machine" effect
     if (Settings.slotMachineEveryMinute && Main.systemTm->tm_min != lastMin) {
       Nixie.slotMachine();
-      lastMin = Main.systemTm->tm_min;
     }
+    // trigger the cathode poisoning prevention routine
     if (Settings.cathodePoisonPrevent && Main.cppEffectEnabled && Main.timeDigits.value[0] == 0) {
+      Nixie.setBrightness (Brightness.maximum ());
       Nixie.cathodePoisonPrevent ();
     }
   }
-  else {
-    lastMin = Main.systemTm->tm_min;
-  }
+
+  lastMin = Main.systemTm->tm_min;
 }
 /*********/
 
@@ -745,11 +763,12 @@ void adcRead (void) {
     
     // process light sensor value
     if (Main.analogPin[chanIdx] == LIGHTSENS_APIN) {
+     // reduce light sensor sampling frequency
      // disable auto-brightness when a button is pressed to avoid ADC channel cross-talk
-     if (ts - lightsensTs > 150 && !Button[0].pressed && !Button[1].pressed && !Button[2].pressed) { 
+     // disable auto-brightness during cathode poisoning prevention
+     if (ts - lightsensTs > 150 && !Button[0].pressed && !Button[1].pressed && !Button[2].pressed && !Nixie.cppEnabled) { 
         avgVal[chanIdx] = (avgVal[chanIdx] * 31 + (int32_t)adcVal) >> 5;  // IIR low-pass filtering for smooth transitions
-        if (Settings.brightnessAutoAdjust) val = Brightness.lightSensorUpdate ((int16_t)avgVal[chanIdx]);
-        else                               val = Brightness.lightSensorUpdate (512);
+        val = Brightness.lightSensorUpdate ((int16_t)avgVal[chanIdx]);
         Nixie.setBrightness (val);
         lightsensTs = ts;
       }     
@@ -892,6 +911,7 @@ void reorderMenu (int8_t menuIndex) {
 }
 /*********/
 
+
 /***********************************
  * Code snippet for setting time/date value
  * called repeatedly from within settingsMenu()
@@ -995,20 +1015,14 @@ void settingsMenu (void) {
       if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
     }*/
     else if ( Main.menuState == SHOW_TIME) {
-      // button 1 - long press --> increase brightness
-      if (Button[1].longPressContinuous () && ts - brightnessTs >= 50) {
-        valU8 = Brightness.increase (1);
+      // button 1 or 2 - long press --> increase/decrease brightness
+      if ((Button[1].longPressContinuous () || Button[2].longPressContinuous ()) && ts - brightnessTs >= 50) {
+        if (Button[1].pressed) valU8 = Brightness.increase ();
+        else                   valU8 = Brightness.decrease ();
         Nixie.setBrightness (valU8);
         Nixie.refresh ();
         brightnessTs = ts;
-      }   
-      // button 2 - long press --> decrease brightness
-      else if (Button[2].longPressContinuous () && ts - brightnessTs >= 50) {
-        valU8 = Brightness.decrease (1);
-        Nixie.setBrightness (valU8);
-        Nixie.refresh ();
-        brightnessTs = ts;
-      }  
+      }    
     }
   }
 
@@ -1171,34 +1185,18 @@ void settingsMenu (void) {
         nextState = SHOW_TIME_E;
         reorderMenu (menuIndex);
       }
-      // button 1 - long press --> increment seconds then minutes / arm countdown timer
-      else if (Button[1].longPressContinuous ()) {
+      // button 1 or 2 - long press --> increase/decrease seconds then minutes / arm countdown timer
+      else if (Button[1].longPressContinuous () || Button[2].longPressContinuous ()) {
         if (ts - scrollTs >= scrollDelay) {
           if (!CdTimer.active) Stopwatch.reset ();
           if (scrollCount < 6) {
-            CdTimer.secondIncrease ();
+            if (Button[1].pressed) CdTimer.secondIncrease ();
+            else                   CdTimer.secondDecrease ();
             accelTs = ts; scrollDelay = scrollDelayDefault;
           }
           else {
-            CdTimer.minuteIncrease ();
-          }
-          CdTimer.resetAlarm ();
-          scrollTs = ts;
-          nextState = SHOW_TIME_E;
-          reorderMenu (menuIndex);
-          scrollCount++;
-        }
-      }
-      // button 2 - long press --> decrement seconds then minutes / arm countdown timer
-      else if (Button[2].longPressContinuous ()) {
-        if (ts - scrollTs >= scrollDelay) {
-          if (!CdTimer.active) Stopwatch.reset ();
-          if (scrollCount < 6) {
-            CdTimer.secondDecrease ();
-            accelTs = ts; scrollDelay = scrollDelayDefault;
-          }
-          else {
-            CdTimer.minuteDecrease ();
+            if (Button[1].pressed) CdTimer.minuteIncrease ();
+            else                   CdTimer.minuteDecrease ();
           }
           CdTimer.resetAlarm ();
           scrollTs = ts;
@@ -1371,23 +1369,18 @@ void settingsMenu (void) {
           Alarm.displayRefresh ();
         }
       }
-      // button 1 - pressed --> increase value
-      else if (Button[1].pressed) {
+      // button 1 or 2 - pressed --> increase/decrease value
+      else if (Button[1].pressed || Button[2].pressed) {
         Nixie.resetBlinking();
         if (ts - scrollTs >= scrollDelay) {
-          if (sIdx == 0)      Alarm.hourIncrease ();
-          else if (sIdx == 1) Alarm.minuteIncrease ();
-          else if (sIdx == 2) Alarm.toggleWeekdays ();
-          else if (sIdx == 3) Alarm.toggleActive ();
-          scrollTs = ts;
-        }   
-      }
-      // button 2 - pressed --> decrease value
-      else if (Button[2].pressed) {
-        Nixie.resetBlinking();
-        if (ts - scrollTs >= scrollDelay) {
-          if (sIdx == 0)      Alarm.hourDecrease ();
-          else if (sIdx == 1) Alarm.minuteDecrease ();
+          if (sIdx == 0) {
+            if (Button[1].pressed) Alarm.hourIncrease ();
+            else                   Alarm.hourDecrease ();
+          }
+          else if (sIdx == 1) {
+            if (Button[1].pressed) Alarm.minuteIncrease ();
+            else                   Alarm.minuteDecrease ();
+          }
           else if (sIdx == 2) Alarm.toggleWeekdays ();
           else if (sIdx == 3) Alarm.toggleActive ();
           scrollTs = ts;
@@ -1457,9 +1450,13 @@ void settingsMenu (void) {
             Main.timer1PeriodUpdateFlag = true;
             Main.timer2PeriodUpdateFlag = true;
           } 
+          // if auto brightness feature was activated/deactivated
+          else if (SettingsLut[sIdx].value == &Settings.brightnessAutoAdjust) {
+            Brightness.autoEnable (Settings.brightnessAutoAdjust);
+          }
         #ifndef SERIAL_DEBUG
           // if the brighness boost feature has been activated/deactivated
-          if (SettingsLut[sIdx].value == &Settings.brightnessBoost) {
+          else if (SettingsLut[sIdx].value == &Settings.brightnessBoost) {
             Brightness.boostEnable (Settings.brightnessBoost);
           }
         #endif

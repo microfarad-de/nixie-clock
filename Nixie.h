@@ -164,6 +164,11 @@ class NixieClass {
      */
     bool comma[NIXIE_MAX_NUM_TUBES] = { false };
 
+    /*
+     * Status of the CPP feature
+     */
+    bool cppEnabled = false;
+
   private:
   
     NixieNumTubes_e numTubes;
@@ -182,14 +187,12 @@ class NixieClass {
     uint32_t slotMachineTs[NIXIE_MAX_NUM_TUBES] = { 0 };
     uint8_t slotMachineCnt[NIXIE_MAX_NUM_TUBES] = { 0 };
     uint32_t slotMachineDelay[NIXIE_MAX_NUM_TUBES] = { 0 };
-    uint8_t slotMachineCntStart[NIXIE_MAX_NUM_TUBES] = { 11,  9,  7,  5, 13, 15 };
-    uint8_t slotMachineCntMax[NIXIE_MAX_NUM_TUBES]   = { 50, 40, 30, 20, 60, 70 };
-    bool cppEnabled = false;
+    uint8_t slotMachineCntStart[NIXIE_MAX_NUM_TUBES] = {  0, 11,  5, 13,  9, 15 };
+    uint8_t slotMachineCntMax[NIXIE_MAX_NUM_TUBES]   = { 20, 50, 30, 60, 40, 70 };
     uint32_t cppTs = 0;
     uint8_t cppCnt = 0;
     uint32_t scrollTs = 0;
     int8_t scrollOffset = 0;
-    bool fullBrightness = false;
 };
 
 

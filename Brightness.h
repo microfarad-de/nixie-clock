@@ -32,6 +32,25 @@ class BrightnessClass {
     void initialize (uint16_t eepromAddr, uint8_t boostPin = 0);
 
     /*
+     * Enables/disables the auto brightness feature
+     * Parameters:
+     *   enable : true/false
+     */
+    void autoEnable (bool enable); 
+
+    /*
+     * Enables/disables the boost feature
+     * Parameters:
+     *   enable : true/false
+     */
+    void boostEnable (bool enable); 
+
+    /*
+     * Turn-off brightness boost circuitry
+     */
+    void boostDeactivate (void);
+
+    /*
      * Apply new value from light sensor 
      * Parameters: 
      *   value : light sensor value [0..1023] (0 = brightest, 1023 = darkest)
@@ -41,39 +60,32 @@ class BrightnessClass {
     uint8_t lightSensorUpdate (int16_t value);
 
     /*
-     * Increase brightness by 1 or more increments
-     * Parameters:
-     *   steps : number of increments to increase [1..99]
+     * Increase brightness by 1 increment
      * Returns:
      *   brightness value [0..99]
      */
-    uint8_t increase (uint8_t steps = 1);
+    uint8_t increase (void);
 
     /*
-     * Decrease brightness by 1 or more increments
-     * Parameters:
-     *   steps : number of increments to decrease [1..99]
+     * Decrease brightness by 1 increment
      * Returns:
      *   brightness value [0..99]
      */
-    uint8_t decrease (uint8_t steps = 1);
+    uint8_t decrease (void);
+
+    /*
+     * Set the brightneess temporarily to the maximum value
+     * does not update the LUT
+     * Returns:
+     *   brightness value [0..99]
+     */
+    uint8_t maximum (void);
 
     /*
      * Write-back the lookup table into EEPROM
      */
     void eepromWrite (void);
-
-    /*
-     * Turn-off brightness boost circuitry
-     */
-    void boostDeactivate (void);
-
-    /*
-     * Enables/disables the boost feature
-     * Parameters:
-     *   enable : true/false
-     */
-    void boostEnable (bool enable); 
+    
     
   private:
     void interpolate (void);                    // Interpolate the entries of the LUT
@@ -81,7 +93,8 @@ class BrightnessClass {
     uint16_t eepromAddr;                        // LUT within EEPROM
     uint8_t boostPin;                           // digital pin for controlling the boost circuitry
     bool boostEnabled;                          // enables the boost feature
-    uint8_t lutIdx = 0;                         // index of the brightness LUT element
+    bool autoEnabled;                           // enables the auto brightness feature
+    uint8_t lutIdx;                             // index of the brightness LUT element
     uint8_t lut[BRIGHTNESS_LUT_SIZE] = { 0 };   // brightness lookup table    
   
 };
