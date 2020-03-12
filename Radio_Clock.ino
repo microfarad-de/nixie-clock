@@ -416,6 +416,10 @@ void loop() {
     Main.menuState = SHOW_TIME_E;
     blankCondition = false;
   }
+  // ensure that blankCondition is reset after blanking period elapses, even if not in blanking mode
+  else if (blankCondition) {
+    blankCondition = false;
+  }
 
   Nixie.refresh ();
 
