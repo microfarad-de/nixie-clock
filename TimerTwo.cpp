@@ -12,6 +12,9 @@
 
 #include "TimerTwo.h"
 
+#define RESOLUTION 256    // Timer2 is 8 bit
+
+
 TimerTwo Timer2;              // preinstatiate
 
 ISR(TIMER2_OVF_vect)          // interrupt service routine that wraps a user defined function supplied by attachInterrupt
@@ -70,4 +73,3 @@ void TimerTwo::restart()
 {
   TCNT2 = 0;
 }
-

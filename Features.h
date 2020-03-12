@@ -86,7 +86,7 @@ class CdTimerClass {
     volatile bool active = false;
     volatile bool running = false;
     volatile bool alarm = false;
-    volatile NixieDigits_s digits; 
+    NixieDigits_s digits; 
   
   private:
     uint32_t alarmTs = 0;
@@ -114,7 +114,7 @@ class StopwatchClass {
     volatile bool active = false;
     volatile bool running = false;
     volatile bool paused = false;
-    volatile NixieDigits_s digits;
+    NixieDigits_s digits;
     
   private:
     volatile ChronoClass tm;
@@ -163,7 +163,7 @@ class AlarmClass {
 
     bool alarm = false;
     bool snoozing = false;
-    volatile NixieDigits_s digits;
+    NixieDigits_s digits;
     AlarmEeprom_s *settings = NULL;
 
   private:
@@ -198,4 +198,3 @@ class ButtonClass {
 
 
 #endif // __FEATURES_H
-

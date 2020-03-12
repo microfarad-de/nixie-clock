@@ -13,6 +13,9 @@
 
 #include "TimerOne.h"
 
+#define RESOLUTION 65536    // Timer1 is 16 bit
+
+
 TimerOne Timer1;              // preinstatiate
 
 ISR(TIMER1_OVF_vect)          // interrupt service routine that wraps a user defined function supplied by attachInterrupt

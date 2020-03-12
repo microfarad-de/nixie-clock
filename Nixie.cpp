@@ -243,5 +243,3 @@ void NixieClass::resetDigits (NixieDigits_s *output) {
   }
   output->numDigits = NIXIE_MAX_NUM_TUBES;
 }
-
-

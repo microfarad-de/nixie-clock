@@ -206,4 +206,3 @@ extern NixieClass Nixie;
 
 
 #endif // __NIXIE_H
-

@@ -332,12 +332,16 @@ void AlarmClass::initialize (AlarmEeprom_s *settings) {
 void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool active) {
   static int8_t lastMinute = 0;
   static uint32_t blinkTs = 0;
+  static bool alarmCondition = false;
   uint32_t ts = millis ();
 
-  if (active && !snoozing && settings->mode != ALARM_OFF && minute != lastMinute &&
+  if (active && !snoozing && settings->mode != ALARM_OFF && !alarmCondition &&
       minute == settings->minute && hour == settings->hour && 
       (settings->mode != ALARM_WEEKDAYS || (wday >= 1 && wday <= 5)) && 
-      (settings->mode != ALARM_WEEKENDS || wday == 0 || wday == 6)) startAlarm (); 
+      (settings->mode != ALARM_WEEKENDS || wday == 0 || wday == 6)) {
+        startAlarm (); 
+        alarmCondition = true;
+      }
 
   if (snoozing && ts - snoozeTs > ALARM_SNOOZE_DURATION) startAlarm ();
 
@@ -348,6 +352,7 @@ void AlarmClass::loopHandler (int8_t hour, int8_t minute, int8_t wday, bool acti
 
   if (alarm && ts - alarmTs > ALARM_ALARM_DURATION) resetAlarm ();
 
+  if (minute != lastMinute) alarmCondition = false;
   lastMinute = minute;
 }
 
@@ -516,6 +521,3 @@ bool ButtonClass::longPressContinuous (void) {
 
 
 /*#######################################################################################*/
-
-
-

@@ -1465,12 +1465,12 @@ void settingsMenu (void) {
             Main.timer2PeriodUpdateFlag = true;
           } 
           // if auto brightness feature was activated/deactivated
-          else if (SettingsLut[sIdx].value == &Settings.brightnessAutoAdjust) {
+          else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessAutoAdjust) {
             Brightness.autoEnable (Settings.brightnessAutoAdjust);
           }
         #ifndef SERIAL_DEBUG
           // if the brighness boost feature has been activated/deactivated
-          else if (SettingsLut[sIdx].value == &Settings.brightnessBoost) {
+          else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessBoost) {
             Brightness.boostEnable (Settings.brightnessBoost);
           }
         #endif

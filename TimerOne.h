@@ -17,7 +17,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define RESOLUTION 65536    // Timer1 is 16 bit
 
 class TimerOne
 {
@@ -44,4 +43,3 @@ class TimerOne
 extern TimerOne Timer1;
 
 #endif // __TIMERONE_H
-

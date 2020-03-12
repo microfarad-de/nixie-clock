@@ -16,7 +16,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#define RESOLUTION 256    // Timer2 is 8 bit
 
 class TimerTwo
 {
@@ -40,4 +39,3 @@ class TimerTwo
 extern TimerTwo Timer2;
 
 #endif // __TIMERTWO_H
-
