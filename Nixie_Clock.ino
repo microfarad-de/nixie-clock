@@ -20,7 +20,15 @@
  * 
  * Karim Hraibi - 2018
  * 
+ * Version: 1.0.0
+ * Date:    12.12.2018
+ * 
  */
+// version information
+#define VERSION_MAJOR 1
+#define VERSION_MINOR 0
+#define VERSION_MAINT 0
+
 
 
 #include <time.h>
@@ -35,8 +43,7 @@
 #include "Brightness.h"
 #include "Helper.h"
 #include "Features.h"
-#include "BuildDate.h"
-
+//#include "BuildDate.h"
 
 
 //#define SERIAL_DEBUG              // activate debug printing over RS232
@@ -1312,20 +1319,18 @@ void settingsMenu (void) {
         }
         // show Timer1 period (default)
         else if (vIdx == 2) {
-          valueDigits.numDigits = 12;
-          valueDigits.value[11] = 3;
-          valueDigits.comma[11] = true;
-          valueDigits.blank[10] = true; 
-          valueDigits.value[9]  = BUILD_HOUR_CH0 - '0';
-          valueDigits.value[8]  = BUILD_HOUR_CH1 - '0';
-          valueDigits.value[7]  = BUILD_MIN_CH0 - '0';
-          valueDigits.value[6]  = BUILD_MIN_CH1 - '0';       
-          valueDigits.value[5]  = BUILD_DAY_CH0 - '0';
-          valueDigits.value[4]  = BUILD_DAY_CH1 - '0';
-          valueDigits.value[3]  = BUILD_MONTH_CH0 - '0';
-          valueDigits.value[2]  = BUILD_MONTH_CH1 - '0'; 
-          valueDigits.value[1]  = BUILD_YEAR_CH2 - '0';
-          valueDigits.value[0]  = BUILD_YEAR_CH3 - '0';
+          valueDigits.numDigits = 8;
+          valueDigits.value[7] = 3;
+          valueDigits.comma[7] = true;
+          valueDigits.blank[6] = true; 
+          valueDigits.value[5]  = dec2bcdHigh (VERSION_MAJOR);
+          valueDigits.value[4]  = dec2bcdLow (VERSION_MAJOR);
+          valueDigits.comma[4] = true;
+          valueDigits.value[3]  = dec2bcdHigh (VERSION_MINOR);
+          valueDigits.value[2]  = dec2bcdLow (VERSION_MINOR);
+          valueDigits.comma[2] = true;    
+          valueDigits.value[1]  = dec2bcdHigh (VERSION_MAINT);
+          valueDigits.value[0]  = dec2bcdLow (VERSION_MAINT);
           Nixie.scroll (); 
         }   
       }
