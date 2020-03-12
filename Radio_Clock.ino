@@ -272,7 +272,7 @@ void setup() {
   PRINT   ("[setup] timer1Period=");
   PRINTLN (Settings.timer1Period, DEC);
   
-  // derive the seconds-per-day corretion value from the current timer1Period
+  // derive the seconds-per-day correction value from the current timer1Period
   Settings.secPerDayCorrect = TIMER1_TO_SEC_PER_DAY (Settings.timer1Period);
   //PRINT   ("[setup] secPerDayCorrect=");
   //PRINTLN (Settings.secPerDayCorrect, DEC);
@@ -467,7 +467,7 @@ void loop() {
 
   Nixie.refresh ();
   
-  Buzzer.loopHandler ();    // buzzer loop handlrer
+  Buzzer.loopHandler ();    // buzzer loop handler
 
 
 #ifdef SERIAL_DEBUG  
@@ -629,7 +629,7 @@ void syncToDCF () {
     if (abs (delta) < 60 || abs (delta - lastDelta) < 60) {
       cli ();                                      
       Timer1.restart ();                           // reset the beginning of a second 
-      set_system_time (dcfTime - 1);               // apply the new system time (Timer1.restart adds 1s)
+      set_system_time (dcfTime);                   // apply the new system time
       sei ();                                      
       Main.lastDcfSyncTime = dcfTime;              // remember last sync time
       Main.dcfSyncActive = false;                  // pause DCF77 reception
