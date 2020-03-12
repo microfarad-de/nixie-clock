@@ -144,8 +144,8 @@ struct Settings_t {
  */
 struct {
   int8_t *value;     // pointer to the value variable
-  uint8_t idDigit1;   // most significant digit to be displayed for the settings ID
-  uint8_t idDigit0;   // least significant digit to be dispalyed for the settings ID
+  uint8_t idDigit1;  // most significant digit to be displayed for the settings ID
+  uint8_t idDigit0;  // least significant digit to be dispalyed for the settings ID
   int8_t minVal;     // minimum value
   int8_t maxVal;     // maximum value
   int8_t defaultVal; // default value
@@ -309,7 +309,7 @@ void setup() {
   Brightness.boostEnable (Settings.brightnessBoost);
 #endif
 
-  // initialize the countdown alarm, timer and stopwatch objects
+  // initialize the alarm, countdown timer and stopwatch objects
   Alarm.initialize (&Settings.alarm);
   CdTimer.initialize (featureCallback);
   Stopwatch.initialize (featureCallback);
@@ -388,15 +388,15 @@ void loop() {
   if (Settings.blankScreenMode == 4 || 
        ( ( (
              (Settings.blankScreenMode >= 1 && Settings.blankScreenMode <= 3 ) && (
-               (Settings.blankScreenStartHr <= Settings.blankScreenFinishHr &&  hour >= Settings.blankScreenStartHr && hour < Settings.blankScreenFinishHr  ) ||
-               (Settings.blankScreenStartHr >  Settings.blankScreenFinishHr && (hour >= Settings.blankScreenStartHr || hour < Settings.blankScreenFinishHr) ) 
+               (Settings.blankScreenStartHr <  Settings.blankScreenFinishHr &&  hour >= Settings.blankScreenStartHr && hour < Settings.blankScreenFinishHr  ) ||
+               (Settings.blankScreenStartHr >= Settings.blankScreenFinishHr && (hour >= Settings.blankScreenStartHr || hour < Settings.blankScreenFinishHr) ) 
              ) &&
              (Settings.blankScreenMode != 2 || (wday >= 1 && wday <= 5) ) && (Settings.blankScreenMode != 3 || wday == 0 || wday == 6) 
            ) ||
            (
              (Settings.blankScreenMode2 >= 1 && Settings.blankScreenMode2 <= 3 ) && (
-               (Settings.blankScreenStartHr2 <= Settings.blankScreenFinishHr2 &&  hour >= Settings.blankScreenStartHr2 && hour < Settings.blankScreenFinishHr2  ) ||
-               (Settings.blankScreenStartHr2 >  Settings.blankScreenFinishHr2 && (hour >= Settings.blankScreenStartHr2 || hour < Settings.blankScreenFinishHr2) ) 
+               (Settings.blankScreenStartHr2 <  Settings.blankScreenFinishHr2 &&  hour >= Settings.blankScreenStartHr2 && hour < Settings.blankScreenFinishHr2  ) ||
+               (Settings.blankScreenStartHr2 >= Settings.blankScreenFinishHr2 && (hour >= Settings.blankScreenStartHr2 || hour < Settings.blankScreenFinishHr2) ) 
              ) &&
              (Settings.blankScreenMode2 != 2 || (wday >= 1 && wday <= 5) ) && (Settings.blankScreenMode2 != 3 || wday == 0 || wday == 6)
            )
@@ -420,7 +420,7 @@ void loop() {
 
   Nixie.refresh ();
 
-  // write-back system settings to EEPROM every night (needed for saving Nixe tube uptime)
+  // write-back system settings to EEPROM every night
   if (hour != lastHour && hour == 1 && Main.menuState != SET_HOUR) {
       Nixie.blank ();
       eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
@@ -430,7 +430,7 @@ void loop() {
 
   Nixie.refresh ();
 
-  // toggle the decimal point on the Nixie tube
+  // toggle the decimal point for the DCF signal indicator 
   if (Settings.dcfSyncEnabled) {  
     Nixie.comma[1] = Main.dcfSyncActive && (DCF.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
   }
