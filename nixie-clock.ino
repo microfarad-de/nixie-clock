@@ -26,7 +26,7 @@
  *   http://www.microfarad.de
  *   http://www.github.com/microfarad-de 
  *   
- * Copyright (C) 2019 Karim Hraibi (khraibi at gmail.com)
+ * Copyright (C) 2021 Karim Hraibi (khraibi at gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 3.4.1
- * Date:    March 2020
+ * Version: 4.0.0
+ * Date:    January 2021
  */
-#define VERSION_MAJOR 3  // Major version
-#define VERSION_MINOR 4  // Minor version
-#define VERSION_MAINT 1  // Maintenance version
+#define VERSION_MAJOR 4  // Major version
+#define VERSION_MINOR 0  // Minor version
+#define VERSION_MAINT 0  // Maintenance version
 
 
 
@@ -67,7 +67,7 @@
 //#include "BuildDate.h"
 
 
-//#define VALUE_DEBUG         // activate the debug values within the service menu
+#define VALUE_DEBUG         // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
@@ -129,17 +129,18 @@
 
 // various constants
 #define TIMER1_DEFUALT_PERIOD  1000000       // default period for Timer1 in us (1 second)
+#define TIMER2_DIVIDER         40            // (Timer2 period) = (Timer1 period) / TIMER2_DIVIDER
 #define WDT_TIMEOUT            WDTO_4S       // watcchdog timer timeout setting
 #define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
 #ifdef VALUE_DEBUG
-  #define NUM_DEBUG_VALUES     7             // total number of debug values shown in the service menu
+  #define NUM_DEBUG_VALUES     9             // total number of debug values shown in the service menu
 #else 
   #define NUM_DEBUG_VALUES     0
 #endif
-#define NUM_DEBUG_DIGITS       6           // number of digits for the debug values shown in the service menu  
+#define NUM_DEBUG_DIGITS       6             // number of digits for the debug values shown in the service menu  
 #define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)   // total number of values inside the service menu
 
 
@@ -162,7 +163,7 @@ enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_WEEK_E, SHOW_ALARM_E, SHOW_
  * Structure that holds the settings to be stored in EEPROM
  */
 struct Settings_t {
-  volatile uint32_t timer1Period = TIMER1_DEFUALT_PERIOD;  // stores the period of Timer1 in microseconds
+  volatile uint32_t timer1Period = TIMER1_DEFUALT_PERIOD; // nominal period of Timer1 in microseconds
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
   uint32_t nixieUptimeResetCode;  // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
   bool dcfSyncEnabled;            // enables DCF77 synchronization feature
@@ -223,6 +224,13 @@ struct SettingsLut_t {
  */
 struct G_t {
   public:
+    volatile uint32_t timer1Step;                  // minimum adjustment step for Timer1 in µs
+    volatile uint32_t timer1PeriodN;               // nearest multiple of TIMER1_STEP to timer1Period (rounded down)
+    volatile uint32_t timer1PeriodR;               // remainder of timer1Period / timer1Step
+    volatile uint32_t timer2Step;                  // minimum adjustment step for Timers in µs
+    volatile uint32_t timer2Period;                // nominal period of Timer1 in microseconds
+    volatile uint32_t timer2PeriodN;               // nearest multiple of TIMER2_STEP to timer2Period (rounded down)
+    volatile uint32_t timer2PeriodR;               // remainder of timer2Period / timer2Step
     uint32_t dcfSyncInterval             = 0;      // DCF77 synchronization interval in minutes
     time_t lastDcfSyncTime               = 0;      // stores the time of last successful DCF77 synchronizaiton
     bool manuallyAdjusted                = true;   // prevent crystal drift compensation if clock was manually adjusted  
@@ -230,13 +238,11 @@ struct G_t {
     bool cppEffectEnabled                = false;  // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
     volatile uint32_t secTickMsStamp     = 0;      // millis() at the last second tick, used for accurate crystal drift compensation
     volatile bool timer1TickFlag         = false;  // flag is set every second by the Timer1 ISR 
-    volatile bool timer1PeriodUpdateFlag = false;  // flag is set whenever Timer1 period needs to be updated by the ISR
-    volatile bool timer2PeriodUpdateFlag = false;  // flag is set whenever Timer2 period needs to be updated by the ISR
     volatile uint8_t timer2SecCounter    = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
     volatile uint8_t timer2TenthCounter  = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
-  #ifdef SERIAL_DEBUG
+#ifdef SERIAL_DEBUG
     volatile uint8_t printTickCount      = 0;      // incremented by the Timer1 ISR every second
-  #endif
+#endif
     time_t systemTime                    = 0;      // current system time
     tm    *systemTm                      = NULL;   // pointer to the current system time structure
     NixieDigits_s timeDigits;                      // stores the Nixie display digit values of the current time
@@ -249,10 +255,11 @@ struct G_t {
 
     // dynamically defines the order of the menu items
     MenuState_e menuOrder[MENU_ORDER_LIST_SIZE] = 
-       { SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E }; 
+       { SHOW_STOPWATCH_E, SHOW_TIMER_E, SHOW_SERVICE_E }; 
 
+#ifdef VALUE_DEBUG
     int32_t debugValue[NUM_DEBUG_VALUES];          // values used for general purpose debugging
-    
+#endif
 } G;
 
 /*
@@ -275,6 +282,7 @@ void timer2ISR (void);
 void featureCallback (bool);
 void syncToDCF (void);
 void timerCalibrate (time_t, int32_t);
+void timerCalculate (void);
 void updateDigits (void);
 void adcRead (void);
 void powerSave (void);
@@ -296,6 +304,17 @@ void setup() {
   // initialize serial port
   Serial.begin (SERIAL_BAUD);
 #endif
+
+#ifdef VALUE_DEBUG
+  // initialize the debug values
+  for (i = 0; i < NUM_DEBUG_VALUES; i++) {
+    G.debugValue[i] = (int32_t)111111111 * (i + 1);
+    if (i % 2 == 0) {
+      G.debugValue[i] = -G.debugValue[i];
+    }
+  }
+#endif
+  
   PRINTLN (" ");
   PRINTLN ("+ + +  N I X I E  C L O C K  + + +");
   PRINTLN (" ");
@@ -368,14 +387,13 @@ void setup() {
   //PRINT   ("[setup] secPerDayCorrect=");
   //PRINTLN (Settings.secPerDayCorrect, DEC);
   
-  // initialize Timer 1 to trigger timer1ISR once per second
-  Timer1.initialize (Settings.timer1Period);
+  // initialize Timer1 to trigger timer1ISR once per second
+  G.timer1Step = Timer1.initialize (Settings.timer1Period);
   Timer1.attachInterrupt (timer1ISR);
 
-  // initialize Timer2, set the period to 25ms (1s / 40)
   // Timer2 is used for Chronometer and Countdown Timer features
   // Timer2 has a maximum period of 32768us
-  Timer2.initialize (Settings.timer1Period / 40); 
+  G.timer2Step = Timer2.initialize (Settings.timer1Period / TIMER2_DIVIDER); 
   Timer2.attachInterrupt (timer2ISR);
   cli ();
   Timer2.stop ();
@@ -384,6 +402,8 @@ void setup() {
   G.timer2SecCounter = 0; 
   G.timer2TenthCounter = 0;
   
+  // intialize the Timer1 and Timer2 parameters
+  timerCalculate();
  
 #ifndef SERIAL_DEBUG
   // initialize the Buzzer driver (requires serial communication pin)
@@ -399,16 +419,6 @@ void setup() {
   Alarm.initialize (&Settings.alarm);
   CdTimer.initialize (featureCallback);
   Stopwatch.initialize (featureCallback);
-
-  #ifdef VALUE_DEBUG
-  // initialize the debug values
-  for (i = 0; i < NUM_DEBUG_VALUES; i++) {
-    G.debugValue[i] = (int32_t)111111111 * (i + 1);
-    if (i % 2 == 0) {
-      G.debugValue[i] = -G.debugValue[i];
-    }
-  }
-  #endif
 
   // enable the watchdog
   wdt_enable (WDT_TIMEOUT);
@@ -569,16 +579,30 @@ void loop() {
  * Timer ISR
  * Triggered once every second by Timer 1
  ***********************************/
-void timer1ISR () {
+void timer1ISR (void) {
+  static uint32_t fractCount = 0;
+  static bool toggleFlag = false;
+  
 
   system_tick ();
 
   if (Nixie.enabled) Settings.nixieUptime++;
 
-  // to avoid race conditions, Timer1 period must be updated from within the ISR
-  if (G.timer1PeriodUpdateFlag) {
-    Timer1.setPeriod (Settings.timer1Period);
-    G.timer1PeriodUpdateFlag = false;
+  // dynamically adjust the timer period to account for fractions of a step
+  if (fractCount < G.timer1PeriodR && toggleFlag == false) {
+    Timer1.setPeriod (G.timer1PeriodN + G.timer1Step);
+    toggleFlag = true;
+  }
+
+  // dynamically adjust the timer period to account for fractions of a step
+  if (fractCount >= G.timer1PeriodR && toggleFlag == true) {
+    Timer1.setPeriod (G.timer1PeriodN);
+    toggleFlag = false;
+  }
+
+  fractCount++;
+  if (fractCount >= G.timer1Step) {
+    fractCount = 0;
   }
 
   G.timer1TickFlag = true;
@@ -594,29 +618,41 @@ void timer1ISR () {
  * Timer2 ISR
  * Triggered once every 25ms by Timer 2
  ***********************************/
-void timer2ISR () {
+void timer2ISR (void) {
+  static uint32_t fractCount = 0;
+  static bool toggleFlag = false;
     
   G.timer2SecCounter++;
   G.timer2TenthCounter++;
   
   // 1s period = 25ms * 40
-  if (G.timer2SecCounter >= 40) {
+  if (G.timer2SecCounter >= TIMER2_DIVIDER) {
     CdTimer.tick ();
     G.timer2SecCounter = 0;
   }
 
   // 1/10s period = 25ms * 4
-  if (G.timer2TenthCounter >= 4) {
+  if (G.timer2TenthCounter >= (TIMER2_DIVIDER / 10)) {
     Stopwatch.tick ();
     G.timer2TenthCounter = 0;
   }
 
-  // to avoid race conditions, Timer2 period must be updated from within the ISR
-  if (G.timer2PeriodUpdateFlag) {
-    // initialize Timer2, set the period to 25ms (1s / 40)
-    Timer2.setPeriod (Settings.timer1Period / 40);
-    G.timer2PeriodUpdateFlag = false;
+  // dynamically adjust the timer period to account for fractions of a step
+  if (fractCount < G.timer2PeriodR && toggleFlag == false) {
+    Timer2.setPeriod (G.timer2PeriodN + G.timer2Step);
+    toggleFlag = true;
   }
+
+  // dynamically adjust the timer period to account for fractions of a step
+  if (fractCount >= G.timer2PeriodR && toggleFlag == true) {
+    Timer2.setPeriod (G.timer2PeriodN);
+    toggleFlag = false;
+  }
+
+  fractCount++;
+  if (fractCount >= G.timer2Step) {
+    fractCount = 0;
+  }  
 }
 /*********/
 
@@ -715,17 +751,15 @@ void syncToDCF () {
 
       // calibrate timer1 to compensate for crystal drift
       if (abs (delta) < 60 && timeSinceLastSync > 1800 && !G.manuallyAdjusted && !coldStart) {
-        #ifdef VALUE_DEBUG
+#ifdef VALUE_DEBUG
         // for debugging the calibration inaccuracy issue
-        if (NUM_DEBUG_VALUES >= 6) {
+        if (NUM_DEBUG_VALUES >= 4) {
           G.debugValue[0] = (int32_t)timeSinceLastSync;
           G.debugValue[1] = (int32_t)G.systemTm->tm_hour*10000 + (int32_t)G.systemTm->tm_min*100 + (int32_t)G.systemTm->tm_sec;
           G.debugValue[2] = (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec;
-          G.debugValue[3] = delta;
-          G.debugValue[4] = ms; 
-          G.debugValue[5] = deltaMs;
+          G.debugValue[3] = deltaMs;
         }
-        #endif
+#endif
         timerCalibrate (timeSinceLastSync, deltaMs);     
       }
 
@@ -742,7 +776,7 @@ void syncToDCF () {
     lastDelta = delta; // needed for validating consecutive DCF77 measurements against each other
   }
 
-  #ifdef SERIAL_DEBUG  
+#ifdef SERIAL_DEBUG  
   // debug printing
   // timestamp validation failed
   if (rv < 31) {
@@ -768,7 +802,7 @@ void syncToDCF () {
     PRINTLN (Dcf.lastIdx, DEC);
     Dcf.lastIdx = 0;
   }
-  #endif
+#endif
 
 }
 /*********/
@@ -783,24 +817,19 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   int32_t errorPPM;
 
   errorPPM = (timeOffsetMs * 1000) / (int32_t)measDuration;
-
-  #ifdef VALUE_DEBUG
-  // for debugging the calibration inaccuracy issue
-  if (NUM_DEBUG_VALUES >= 7) {
-    G.debugValue[6] = errorPPM;
-  }
-  #endif
   
-  cli ();
   Settings.timer1Period += errorPPM;
-  sei ();
-
+  timerCalculate ();
+  
   // derive the seconds-per-day corretion value from the current timer1Period
   Settings.secPerDayCorrect = TIMER1_TO_SEC_PER_DAY (Settings.timer1Period);
-
-  // to avoid race conditions, timer period is updated from within the ISRs
-  G.timer1PeriodUpdateFlag = true;
-  G.timer2PeriodUpdateFlag = true;
+  
+#ifdef VALUE_DEBUG
+  // for debugging the calibration inaccuracy issue
+  if (NUM_DEBUG_VALUES >= 5) {
+    G.debugValue[4] = errorPPM;
+  }
+#endif
 
   PRINT   ("[timerCalibrate] measDuration=");
   PRINTLN (measDuration, DEC);
@@ -813,6 +842,32 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
 }
 /*********/
 
+
+
+/***********************************
+ * Derive the Timer1 and Timer2 parameters
+ * out of the Timer1 period
+ ***********************************/
+void timerCalculate (void) {
+  cli ();
+  G.timer1PeriodR = Settings.timer1Period % G.timer1Step;
+  G.timer1PeriodN = Settings.timer1Period - G.timer1PeriodR;
+  G.timer2Period  = Settings.timer1Period / TIMER2_DIVIDER;
+  G.timer2PeriodR = G.timer2Period % G.timer2Step;
+  G.timer2PeriodN = G.timer2Period - G.timer2PeriodR;
+  sei ();
+  
+#ifdef VALUE_DEBUG
+  // for debugging the calibration inaccuracy issue
+  if (NUM_DEBUG_VALUES >= 9) {
+    G.debugValue[5] = G.timer1PeriodN;
+    G.debugValue[6] = G.timer1PeriodR;
+    G.debugValue[7] = G.timer2PeriodN;
+    G.debugValue[8] = G.timer2PeriodR;
+  }
+#endif
+}
+/*********/
 
 
 
@@ -1014,7 +1069,10 @@ void powerSave (void) {
 void reorderMenu (int8_t menuIndex) {
   static MenuState_e lastState = SHOW_TIME;
   MenuState_e temp; 
-
+  
+  // Remove the return statement to enable this feature
+  return;
+  
   // never call the function more than once per menu state
   // ensure that menuIndex is within range
   if (G.menuState != lastState && menuIndex > 0 && menuIndex < MENU_ORDER_LIST_SIZE) {
@@ -1057,7 +1115,7 @@ void settingsMenu (void) {
   static MenuState_e nextState = SHOW_DATE_E;
   static MenuState_e returnState = SHOW_TIME_E; 
   static int8_t menuIndex = 0;
-  static const uint32_t scrollDelayDefault = 300, menuTimeoutDefault = 30*1000, menuTimeoutExtended = 60*60000, menuTimeoutNextState = 5*1000;
+  static const uint32_t scrollDelayDefault = 300, menuTimeoutDefault = (uint32_t)60*1000, menuTimeoutExtended = 60*60000, menuTimeoutNextState = 5*1000;
   static uint32_t timeoutTs = 0, scrollTs = 0, brightnessTs = 0, accelTs = 0, bannerTs = 0;
   static uint32_t scrollDelay = scrollDelayDefault, menuTimeout = menuTimeoutDefault/*, scrollCount = 0*/;
   static NixieDigits_s valueDigits;
@@ -1398,7 +1456,7 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SHOW_SERVICE_E:
       Nixie.resetDigits (&valueDigits);
-      Nixie.setDigits (&valueDigits);   
+      Nixie.setDigits (&valueDigits);
       bannerTs = ts;
       vIdx = 0;
       nextState   = SHOW_TIME_E;
@@ -1407,11 +1465,11 @@ void settingsMenu (void) {
       goto SHOW_SERVICE_ENTRY_POINT;
     case SHOW_SERVICE:      
       // button 1 or 2 rising edge --> cycle back and forth between system parameters
-      if (Button[1].rising () || Button[2].rising ()){
-        timeoutTs = ts;  // reset the menu timeout
-        bannerTs  = ts;  // reset display scroll period
-        Nixie.cancelScroll ();
-        Nixie.resetDigits (&valueDigits);
+      if (Button[1].rising () || Button[2].rising ()) {
+          timeoutTs = ts;  // reset the menu timeout
+          bannerTs  = ts;  // reset display scroll period
+          Nixie.cancelScroll ();
+          Nixie.resetDigits (&valueDigits);
         if      (Button[1].pressed) {
           vIdx++; if (vIdx >= NUM_SERVICE_VALUES) vIdx = 0;
         }
@@ -1452,7 +1510,7 @@ void settingsMenu (void) {
           valueDigits.value[1] = dec2bcdHigh (VERSION_MAINT);
           valueDigits.value[0] = dec2bcdLow (VERSION_MAINT);  
         }
-        #ifdef VALUE_DEBUG   
+#ifdef VALUE_DEBUG   
         // show the Debug values
         else if (vIdx > 2 && vIdx < NUM_SERVICE_VALUES) {
           uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
@@ -1473,8 +1531,7 @@ void settingsMenu (void) {
             Nixie.dec2bcd (0, &valueDigits, NUM_DEBUG_DIGITS);
           }
         }
-        #endif
-
+#endif
         Nixie.scroll ();
       }
       // scroll the display every x seconds
@@ -1604,13 +1661,9 @@ void settingsMenu (void) {
           
           // if seconds-per-day correction value has been set
           if (SettingsLut[sIdx].value == &Settings.secPerDayCorrect) {
-            // derive new timer1Period 
-            cli ();
+            // derive new timer1Period
             Settings.timer1Period = SEC_PER_DAY_TO_TIMER1 (Settings.secPerDayCorrect);
-            sei (); 
-            // to avoid race conditions, timer period is updated from within the ISRs
-            G.timer1PeriodUpdateFlag = true;
-            G.timer2PeriodUpdateFlag = true;
+            timerCalculate ();
           } 
           // if auto brightness feature was activated/deactivated
           else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessAutoAdjust) {
