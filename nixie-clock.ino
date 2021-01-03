@@ -192,7 +192,7 @@ struct Settings_t {
  * Lookup table that maps the individual system settings 
  * to their ranges and IDs  
  */
-struct {
+struct SettingsLut_t {
   int8_t *value;     // pointer to the value variable
   uint8_t idDigit1;  // most significant digit to be displayed for the settings ID
   uint8_t idDigit0;  // least significant digit to be dispalyed for the settings ID
@@ -221,7 +221,7 @@ struct {
 /*
  * Global variables
  */
-struct {
+struct G_t {
   public:
     uint32_t dcfSyncInterval             = 0;      // DCF77 synchronization interval in minutes
     time_t lastDcfSyncTime               = 0;      // stores the time of last successful DCF77 synchronizaiton
