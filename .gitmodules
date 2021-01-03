@@ -1,25 +1,25 @@
 [submodule "src/TimerOne"]
 	path = src/TimerOne
-	url = ssh://git@github.com/microfarad-de/TimerOne
+	url = ssh://git@github.com/arduino-library/TimerOne
 [submodule "src/TimerTwo"]
 	path = src/TimerTwo
-	url = ssh://git@github.com/microfarad-de/TimerTwo
+	url = ssh://git@github.com/arduino-library/TimerTwo
 [submodule "src/Dcf"]
 	path = src/Dcf
-	url = ssh://git@github.com/microfarad-de/Dcf
+	url = ssh://git@github.com/arduino-library/Dcf
 [submodule "src/Adc"]
 	path = src/Adc
-	url = ssh://git@github.com/microfarad-de/Adc
+	url = ssh://git@github.com/arduino-library/Adc
 	branch = nixie-clock
 [submodule "src/Nvm"]
 	path = src/Nvm
-	url = ssh://git@github.com/microfarad-de/Nvm
+	url = ssh://git@github.com/arduino-library/Nvm
 [submodule "src/MathMf"]
 	path = src/MathMf
-	url = ssh://git@github.com/microfarad-de/MathMf
+	url = ssh://git@github.com/arduino-library/MathMf
 [submodule "src/Button"]
 	path = src/Button
-	url = ssh://git@github.com/microfarad-de/Button.git
+	url = ssh://git@github.com/arduino-library/Button.git
 [submodule "arduino-mk"]
 	path = arduino-mk
 	url = ssh://git@github.com/sudar/Arduino-Makefile
