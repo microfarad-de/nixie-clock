@@ -5,6 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/avr/include/**",
+                "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/avr/include/avr/**",
                 "/Applications/Arduino.app/Contents/Java/hardware/arduino/avr/cores/arduino/**",
                 "/Applications/Arduino.app/Contents/Java/hardware/arduino/avr/variants/standard/**",
                 "/Applications/Arduino.app/Contents/Java/hardware/tools/avr/avr/include/avr/**"
