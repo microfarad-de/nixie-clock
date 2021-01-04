@@ -694,7 +694,7 @@ void featureCallback (bool start) {
  * Synchronize the system clock 
  * with the DCF77 time
  ***********************************/
-void syncToDCF () {
+void syncToDCF (void) {
   static bool coldStart = true;  // flag to indicate initial sync after power-up
   static bool enabledCondition = true;
   static int32_t lastDelta = 0;
@@ -765,9 +765,9 @@ void syncToDCF () {
 
       PRINTLN ("[syncToDCF] updated time");
 
-      #ifdef SERIAL_DEBUG
+#ifdef SERIAL_DEBUG
       G.printTickCount   = 0;      // reset RS232 print period
-      #endif
+#endif
 
       G.manuallyAdjusted = false;  // clear the manual adjustment flag
       coldStart          = false;  // clear the initial startup flag
@@ -852,7 +852,9 @@ void timerCalculate (void) {
   cli ();
   G.timer1PeriodR = Settings.timer1Period % G.timer1Step;
   G.timer1PeriodN = Settings.timer1Period - G.timer1PeriodR;
+  sei ();
   G.timer2Period  = Settings.timer1Period / TIMER2_DIVIDER;
+  cli ();
   G.timer2PeriodR = G.timer2Period % G.timer2Step;
   G.timer2PeriodN = G.timer2Period - G.timer2PeriodR;
   sei ();
