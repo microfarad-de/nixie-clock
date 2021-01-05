@@ -4,7 +4,7 @@ This is the C++ firmware source code of the DCF77 radio-controlled Nixie tube cl
 
 The contents of this repository are organized as an Aduino project, meant to be compiled using the Arduino IDE. 
 
-This project uses Git submodules. In order to get its full source code, you first need to clone this Git repository to your local workspace, then you need to run the follwoing command from within the repository's root directory: `git submodule update --init`.
+This project uses Git submodules. In order to get its full source code, please clone this Git repository to your local workspace, then execute the follwoing command from within the repository's root directory: `git submodule update --init`.
 
 In order to build this project, please clone or download the contents of this repository to your local workspace. Please ensure that the name of the parent directory "nixie-clock" matches the base name of `nixie-clock.ino`. Open `nixie-clock.ino` in the Arduino IDE then hit the "Verify" or "Upload" buttons.
 
