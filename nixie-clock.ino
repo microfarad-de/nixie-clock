@@ -279,7 +279,7 @@ StopwatchClass Stopwatch;      // stopwatch object
  ***********************************/
 void timer1ISR (void);
 void timer2ISR (void);
-void featureCallback (bool);
+void timerCallback (bool);
 void syncToDCF (void);
 void timerCalibrate (time_t, int32_t);
 void timerCalculate (void);
@@ -417,8 +417,8 @@ void setup() {
 
   // initialize the alarm, countdown timer and stopwatch
   Alarm.initialize (&Settings.alarm);
-  CdTimer.initialize (featureCallback);
-  Stopwatch.initialize (featureCallback);
+  CdTimer.initialize (timerCallback);
+  Stopwatch.initialize (timerCallback);
 
   // enable the watchdog
   wdt_enable (WDT_TIMEOUT);
@@ -670,7 +670,7 @@ ISR (WDT_vect)  {
 /*********************************** 
  * Countdown timer and stopwatch callback function 
  ***********************************/
-void featureCallback (bool start) {
+void timerCallback (bool start) {
   if (start) {
     Timer2.start ();
   }
@@ -953,9 +953,9 @@ void adcRead (void) {
     }
     // process button values
     else {
-      avgVal[chanIdx] = (avgVal[chanIdx] * 15 + (int32_t)adcVal) >> 4;      // IIR low-pass filtering for button debouncing
+      avgVal[chanIdx] = (avgVal[chanIdx] * 15 + (int32_t)adcVal) >> 4;  // IIR low-pass filtering for button debouncing
       if (avgVal[chanIdx] < 512) {
-        if (Button[chanIdx].pressed == false) Nixie.resetBlinking();       // synchronize digit blinking with the rising edge of a button press
+        if (Button[chanIdx].pressed == false) Nixie.resetBlinking();    // synchronize digit blinking with the rising edge of a button press
         Button[chanIdx].press (); 
       }
       else {
@@ -1517,7 +1517,7 @@ void settingsMenu (void) {
         else if (vIdx > 2 && vIdx < NUM_SERVICE_VALUES) {
           uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
           valueDigits.numDigits = NUM_DEBUG_DIGITS + 2;
-          valueDigits.value[NUM_DEBUG_DIGITS + 1] = idx + 1;
+          valueDigits.value[NUM_DEBUG_DIGITS + 1] = idx;
           valueDigits.comma[NUM_DEBUG_DIGITS]     = true;
           valueDigits.blank[NUM_DEBUG_DIGITS]     = true;
           if (idx < NUM_DEBUG_VALUES)  {   
