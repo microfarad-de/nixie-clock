@@ -2,11 +2,13 @@
 
 This is the C++ firmware source code of the DCF77 radio-controlled Nixie tube clock. The full description of this project can be found on www.microfarad.de/nixie-clock.
 
-The contents of this repository are organized as an Aduino project, meant to be compiled using the Arduino IDE.
+The contents of this repository are organized as an Aduino project, meant to be compiled using the Arduino IDE. 
 
-In order to build this project, please clone or download the contents of this repository to your local workspace. Please ensure that the name of the parent directory "nixie-clock" matches the base name of "nixie-clock.ino". Open "nixie-clock.ino" in the Arduino IDE then hit the "Verify" or "Upload" buttons.
+This project uses Git submodules. In order to get its full source code, you first need to clone this Git repository to your local workspace, then you need to run the follwoing command from within the repository's root directory: `git submodule update --init`.
 
-Debugging via the Serial port can be enabled by uncommenting the "#define SERIAL_DEBUG" macro inside "nixie-clock.ino".
+In order to build this project, please clone or download the contents of this repository to your local workspace. Please ensure that the name of the parent directory "nixie-clock" matches the base name of `nixie-clock.ino`. Open `nixie-clock.ino` in the Arduino IDE then hit the "Verify" or "Upload" buttons.
+
+Debugging via the Serial port can be enabled by uncommenting the `#define SERIAL_DEBUG` macro inside `nixie-clock.ino`.
 
 This firmware has been verified using an Arduino Pro Mini compatible board based on the ATmega328P microcontroller.
 
