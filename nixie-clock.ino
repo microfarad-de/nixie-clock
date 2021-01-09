@@ -816,15 +816,15 @@ void syncToDCF (void) {
  * Periodically back-up the Timer1 period to EEPROM
  ***********************************/
 void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
-  int32_t errorPPM;
+  int32_t drift;
 
-  errorPPM = (timeOffsetMs * 1000 * TIMER1_DIVIDER) / (int32_t)measDuration;
+  drift = (timeOffsetMs * 1000 * TIMER1_DIVIDER) / (int32_t)measDuration;
   
-  Settings.timerPeriod += errorPPM;
+  Settings.timerPeriod += drift;
   timerCalculate ();
   
 #ifdef DEBUG_VALUES
-  Debug.set ( 3, errorPPM);
+  Debug.set ( 3, drift);
 #endif
 
   PRINT   ("[timerCalibrate] measDuration=");
@@ -1675,6 +1675,7 @@ void settingsMenu (void) {
               Settings.timerPeriod--;
             } 
             timerCalculate ();
+            G.manuallyAdjusted = true;
           } 
           // if auto brightness feature was activated/deactivated
           else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessAutoAdjust) {
