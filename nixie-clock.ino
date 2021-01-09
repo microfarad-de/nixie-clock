@@ -953,7 +953,7 @@ void adcRead (void) {
     // process button values
     else {
       avgVal[chanIdx] = (avgVal[chanIdx] * 15 + (int32_t)adcVal) >> 4;  // IIR low-pass filtering for button debouncing
-      if (avgVal[chanIdx] < 512) {
+      if (avgVal[chanIdx] < 400) {
         if (Button[chanIdx].pressed == false) Nixie.resetBlinking();    // synchronize digit blinking with the rising edge of a button press
         Button[chanIdx].press (); 
       }
@@ -1067,7 +1067,7 @@ void powerSave (void) {
  * the last used feature shall appear first in the
  * menu list
  ***********************************/
-void reorderMenu (int8_t menuIndex) {
+void reorderMenu (int8_t menuIdx) {
   static MenuState_e lastState = SHOW_TIME;
   MenuState_e temp; 
   
@@ -1075,11 +1075,11 @@ void reorderMenu (int8_t menuIndex) {
   return;
   
   // never call the function more than once per menu state
-  // ensure that menuIndex is within range
-  if (G.menuState != lastState && menuIndex > 0 && menuIndex < MENU_ORDER_LIST_SIZE) {
+  // ensure that menuIdx is within range
+  if (G.menuState != lastState && menuIdx > 0 && menuIdx < MENU_ORDER_LIST_SIZE) {
     
-    temp = G.menuOrder[menuIndex-1];
-    for (int8_t i = menuIndex-1; i > 0; i--) {
+    temp = G.menuOrder[menuIdx-1];
+    for (int8_t i = menuIdx-1; i > 0; i--) {
       G.menuOrder[i] = G.menuOrder[i-1];
     }
     G.menuOrder[0] = temp;
@@ -1108,19 +1108,35 @@ void reorderMenu (int8_t menuIndex) {
 /*********/
 
 
+
+
+#define SCROLL_LUT_SIZE  18    // digit scrolling lookup dable size
+#define SCROLL_INTERVAL  1000  // digit scrolling interval
+
 /***********************************
  * Implements the settings menu 
  * navigation structure
  ***********************************/
 void settingsMenu (void) {
+  static uint16_t scrollLut[SCROLL_LUT_SIZE] = 
+      { 250, 160, 155, 150, 145, 140, 135, 130, 120, 110, 100, 90, 80, 70, 60, 50, 40, 30 };
   static MenuState_e nextState = SHOW_DATE_E;
   static MenuState_e returnState = SHOW_TIME_E; 
-  static int8_t menuIndex = 0;
-  static const uint32_t scrollDelayDefault = 300, menuTimeoutDefault = (uint32_t)60*1000, menuTimeoutExtended = 60*60000, menuTimeoutNextState = 5*1000;
-  static uint32_t timeoutTs = 0, scrollTs = 0, brightnessTs = 0, accelTs = 0, bannerTs = 0;
-  static uint32_t scrollDelay = scrollDelayDefault, menuTimeout = menuTimeoutDefault/*, scrollCount = 0*/;
+  static int8_t menuIdx = 0;
+  static uint8_t scrollIdx = 0;
+  static const uint32_t menuTimeoutDefault = (uint32_t)60*1000;
+  static const uint32_t menuTimeoutExtended = 60*60000;
+  static const uint32_t menuTimeoutNextState = 5*1000;
+  static uint32_t timeoutTs = 0; 
+  static uint32_t scrollTs = 0;
+  static uint32_t brightnessTs = 0;
+  static uint32_t accelTs = 0; 
+  static uint32_t bannerTs = 0;
+  static uint32_t scrollDelay = scrollLut[0];
+  static uint32_t menuTimeout = menuTimeoutDefault;
   static NixieDigits_s valueDigits;
-  static int8_t sIdx = 0, vIdx = 0;
+  static int8_t sIdx = 0;
+  static int8_t vIdx = 0;
   static bool brightnessEnable = false;
   uint8_t i;
   uint8_t valU8;
@@ -1142,28 +1158,26 @@ void settingsMenu (void) {
   if ( G.menuState == SHOW_TIMER || (G.menuState >= SET_ALARM && G.menuState != SET_SEC) ) {
     // button 1 or 2 - rising edge --> initiate a long press
     if (Button[1].rising () || Button[2].rising ()){
-      accelTs = ts;
-      timeoutTs = ts; // reset the menu timeout
-      scrollTs -= scrollDelay; // ensure digits are updated immediately after a button press
-    }
-    // button 1 or 2 - long press --> further accelerate scrolling digits
-    else if ( (Button[1].pressed || Button[2].pressed) && ts - accelTs >= 8000) {
-      scrollDelay = 20;
-    }
-    // button 1 or 2 - long press --> further accelerate scrolling digits
-    else if ( (Button[1].pressed || Button[2].pressed) && ts - accelTs >= 5000) {
-      scrollDelay = 75;
+      accelTs   = ts;
+      timeoutTs = ts;                // reset the menu timeout
+      scrollTs  = ts - scrollDelay;  // ensure digits are updated immediately after a button press
+      scrollIdx = 0;
     }
     // button 1 or 2 - long press --> accelerate scrolling digits
-    else if ( (Button[1].pressed || Button[2].pressed) && ts - accelTs >= 2000) {
-      scrollDelay = 150;
+    else if ( (Button[1].pressed || Button[2].pressed) && ts - accelTs >= SCROLL_INTERVAL) {
+      accelTs += SCROLL_INTERVAL;
+      if (scrollIdx + 1 < SCROLL_LUT_SIZE) {
+        scrollIdx++;
+        scrollDelay = scrollLut[scrollIdx];
+      }
     }
     // button 1 or 2 - falling edge --> reset scroll speed
     else if (Button[1].fallingContinuous () || Button[2].fallingContinuous ()) {
-      scrollDelay = scrollDelayDefault; 
-      /*scrollCount = 0;*/ 
+      scrollDelay = scrollLut[0]; 
     }
   }
+
+
 
   Nixie.refresh ();  // refresh the Nixie tube display
 
@@ -1280,7 +1294,7 @@ void settingsMenu (void) {
   Nixie.refresh ();  // refresh the Nixie tube display
 
   // ensure not to access outside of array bounds
-  if (menuIndex >= MENU_ORDER_LIST_SIZE) menuIndex = 0;
+  if (menuIdx >= MENU_ORDER_LIST_SIZE) menuIdx = 0;
 
   // main state machines that implements the menu navigation with the different 
   // display and setting modes
@@ -1298,10 +1312,10 @@ void settingsMenu (void) {
       Nixie.cancelScroll ();
       Nixie.setDigits (&G.timeDigits);
       for (i = 0; i < 6; i++) G.timeDigits.blnk[i] = false;
-      menuIndex = 0;
-      nextState = G.menuOrder[menuIndex]; // switch to this state after short-pressing button 0
-                                                     // use dynamic menu ordering
-      returnState = SET_HOUR_E;                      // switch to this state after long-pressing button 0
+      menuIdx = 0;
+      nextState = G.menuOrder[menuIdx]; // switch to this state after short-pressing button 0
+                                        // use dynamic menu ordering
+      returnState = SET_HOUR_E;         // switch to this state after long-pressing button 0
       G.menuState = SHOW_TIME;
     case SHOW_TIME:
       break;
@@ -1312,7 +1326,7 @@ void settingsMenu (void) {
       G.dateDigits.comma[4] = true;
       G.dateDigits.comma[2] = true;
       for (i = 0; i < 6; i++) G.dateDigits.blnk[i] = false;
-      //menuIndex = 0;
+      //menuIdx = 0;
       nextState   = SHOW_TIME_E;
       returnState = SET_DAY_E;
       G.menuState = SHOW_DATE;
@@ -1343,7 +1357,7 @@ void settingsMenu (void) {
       Nixie.setDigits (&Alarm.digits);
       Alarm.displayRefresh ();
       for (i = 0; i < 6; i++) Alarm.digits.blnk[i] = false;
-      //menuIndex = 0;
+      //menuIdx = 0;
       nextState   = SHOW_TIME_E;
       returnState = SET_ALARM_E;
       G.menuState = SHOW_ALARM;
@@ -1356,8 +1370,8 @@ void settingsMenu (void) {
       Nixie.enable (true);
       Nixie.setDigits (&CdTimer.digits);
       if (!CdTimer.running && !CdTimer.alarm && !Stopwatch.active) CdTimer.reset ();
-      menuIndex++;
-      nextState   = G.menuOrder[menuIndex];
+      menuIdx++;
+      nextState   = G.menuOrder[menuIdx];
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
       G.menuState = SHOW_TIMER;
     case SHOW_TIMER:
@@ -1374,7 +1388,7 @@ void settingsMenu (void) {
           CdTimer.start ();
         }
         nextState = SHOW_TIME_E; // if feature was used, return to time display upon pressing button 0
-        reorderMenu (menuIndex); // if feature was used, it will appear first once the menu is accessed
+        reorderMenu (menuIdx); // if feature was used, it will appear first once the menu is accessed
       }
       // button 1 - falling edge --> increment minutes / arm countdown timer
       else if (Button[1].falling ()) {
@@ -1382,7 +1396,7 @@ void settingsMenu (void) {
         if (CdTimer.alarm) CdTimer.resetAlarm ();
         else               CdTimer.minuteIncrease ();  
         nextState = SHOW_TIME_E;
-        reorderMenu (menuIndex);
+        reorderMenu (menuIdx);
       }
       // button 2 - falling edge --> decrement minutes / arm countdown timer
       else if (Button[2].falling ()) {
@@ -1390,26 +1404,18 @@ void settingsMenu (void) {
         if (CdTimer.alarm) CdTimer.resetAlarm ();
         else               CdTimer.minuteDecrease ();
         nextState = SHOW_TIME_E;
-        reorderMenu (menuIndex);
+        reorderMenu (menuIdx);
       }
       // button 1 or 2 - long press --> increase/decrease /*seconds then*/ minutes / arm countdown timer
       else if (Button[1].longPressContinuous () || Button[2].longPressContinuous ()) {
         if (ts - scrollTs >= scrollDelay) {
           if (!CdTimer.active) Stopwatch.reset ();
-          /*if (scrollCount < 6) {
-            if (Button[1].pressed) CdTimer.secondIncrease ();
-            else                   CdTimer.secondDecrease ();
-            accelTs = ts; scrollDelay = scrollDelayDefault;
-          }
-          else {*/
           if (Button[1].pressed) CdTimer.minuteIncrease ();
           else                   CdTimer.minuteDecrease ();
-          /*}*/
           CdTimer.resetAlarm ();
           scrollTs  = ts;
           nextState = SHOW_TIME_E;
-          reorderMenu (menuIndex);
-          /*scrollCount++;*/
+          reorderMenu (menuIdx);
         }
       }
       break;
@@ -1418,8 +1424,8 @@ void settingsMenu (void) {
     case SHOW_STOPWATCH_E:
       Nixie.setDigits (&Stopwatch.digits);
       if (!Stopwatch.active && !CdTimer.active) Stopwatch.reset ();
-      menuIndex++;
-      nextState   = G.menuOrder[menuIndex];
+      menuIdx++;
+      nextState   = G.menuOrder[menuIdx];
       menuTimeout = menuTimeoutExtended; // extend the menu timeout
       G.menuState = SHOW_STOPWATCH;
     case SHOW_STOPWATCH:
@@ -1431,7 +1437,7 @@ void settingsMenu (void) {
         if (!CdTimer.active) {
           Stopwatch.reset ();
           nextState = SHOW_TIME_E;
-          reorderMenu (menuIndex);
+          reorderMenu (menuIdx);
         } 
       }
       // button 1 rising edge --> start/stop stopwatch
@@ -1440,7 +1446,7 @@ void settingsMenu (void) {
         if (Stopwatch.running) Stopwatch.stop ();
         else CdTimer.reset(), Stopwatch.start ();
         nextState = SHOW_TIME_E;
-        reorderMenu (menuIndex);
+        reorderMenu (menuIdx);
       }
       // button 2 rising edge --> toggle pause stopwatch
       else if (Button[2].rising ()) {
@@ -1449,7 +1455,7 @@ void settingsMenu (void) {
           if (Stopwatch.paused) Stopwatch.pause (false);
           else                  Stopwatch.pause (true); 
           nextState = SHOW_TIME_E;
-          reorderMenu (menuIndex);
+          reorderMenu (menuIdx);
         }
       }
       break;
