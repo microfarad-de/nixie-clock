@@ -128,18 +128,18 @@
 #define VOLTAGE_APIN   A7  // measures the retention super capacitor voltage
 
 // various constants
-#define TIMER_DEFUALT_PERIOD   10000000      // default value of timerPeriod in 1/10 us (total is 1 second)
-#define TIMER_MIN_PERIOD       (TIMER_DEFUALT_PERIOD - TIMER_DEFUALT_PERIOD / 100)  // minimum allowed value of timerPeriod
-#define TIMER_MAX_PERIOD       (TIMER_DEFUALT_PERIOD + TIMER_DEFUALT_PERIOD / 100)  // maximum allowed value of timerPeriod
-#define TIMER1_DIVIDER         10                     // (real Timer1 period) = TIMER_DEFUALT_PERIOD / TIMER1_DIVIDER
-#define TIMER2_DIVIDER         (40 * TIMER1_DIVIDER)  // (real Timer2 period) = TIMER_DEFUALT_PERIOD / TIMER2_DIVIDER
+#define TIMER1_DIVIDER         64            // (real Timer1 period) = TIMER_DEFAULT_PERIOD / TIMER1_DIVIDER
+#define TIMER2_DIVIDER         40            // (real Timer2 period) = (real Timer1 period) / TIMER2_DIVIDER
+#define TIMER_DEFAULT_PERIOD   1000000 * TIMER1_DIVIDER  // default value of timerPeriod (total is 1 second)
+#define TIMER_MIN_PERIOD       (TIMER_DEFAULT_PERIOD - TIMER_DEFAULT_PERIOD / 100)  // minimum allowed value of timerPeriod
+#define TIMER_MAX_PERIOD       (TIMER_DEFAULT_PERIOD + TIMER_DEFAULT_PERIOD / 100)  // maximum allowed value of timerPeriod
 #define WDT_TIMEOUT            WDTO_4S       // watcchdog timer timeout setting
 #define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
 #ifdef DEBUG_VALUES
-  #define NUM_DEBUG_VALUES     10            // total number of debug values shown in the service menu
+  #define NUM_DEBUG_VALUES     10             // total number of debug values shown in the service menu
   #define NUM_DEBUG_DIGITS     7             // number of digits for the debug values shown in the service menu  
 #else 
   #define NUM_DEBUG_VALUES     0
@@ -181,7 +181,7 @@ class DebugClass {
  * Structure that holds the settings to be stored in EEPROM
  */
 struct Settings_t {
-  volatile uint32_t timerPeriod = TIMER_DEFUALT_PERIOD;  // virtual period of Timer1/Timer2 in 1/10 µs
+  volatile uint32_t timerPeriod = TIMER_DEFAULT_PERIOD;  // virtual period of Timer1/Timer2 (equivalent to 1 second)
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
   uint32_t nixieUptimeResetCode;  // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
   bool dcfSyncEnabled;            // enables DCF77 synchronization feature
@@ -357,7 +357,7 @@ void setup() {
 
   // validate the Timer1 period loaded from EEPROM
   if (Settings.timerPeriod < TIMER_MIN_PERIOD || Settings.timerPeriod > TIMER_MAX_PERIOD) 
-          Settings.timerPeriod = TIMER_DEFUALT_PERIOD;
+          Settings.timerPeriod = TIMER_DEFAULT_PERIOD;
 
   // reset nixie tube uptime on first-time boot
   if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_CODE) {
@@ -398,7 +398,7 @@ void setup() {
 
   // Timer2 is used for Chronometer and Countdown Timer features
   // Timer2 has a maximum period of 32768us
-  G.timer2Step = Timer2.initialize (Settings.timerPeriod / TIMER2_DIVIDER); 
+  G.timer2Step = Timer2.initialize (Settings.timerPeriod / (TIMER1_DIVIDER * TIMER2_DIVIDER)); 
   Timer2.attachInterrupt (timer2ISR);
   cli ();
   Timer2.stop ();
@@ -631,13 +631,13 @@ void timer2ISR (void) {
   G.timer2TenthCounter++;
   
   // 1s period = 25ms * 40
-  if (G.timer2SecCounter >= TIMER2_DIVIDER / TIMER1_DIVIDER) {
+  if (G.timer2SecCounter >= TIMER2_DIVIDER) {
     CdTimer.tick ();
     G.timer2SecCounter = 0;
   }
 
   // 1/10s period = 25ms * 4
-  if (G.timer2TenthCounter >= (TIMER2_DIVIDER / (TIMER1_DIVIDER * 10))) {
+  if (G.timer2TenthCounter >= TIMER2_DIVIDER / 10) {
     Stopwatch.tick ();
     G.timer2TenthCounter = 0;
   }
@@ -847,6 +847,8 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
 void timerCalculate (void) {
   if (Settings.timerPeriod < TIMER_MIN_PERIOD) Settings.timerPeriod = TIMER_MIN_PERIOD;
   if (Settings.timerPeriod > TIMER_MAX_PERIOD) Settings.timerPeriod = TIMER_MAX_PERIOD;
+
+  uint32_t timer1Period = Settings.timerPeriod / TIMER1_DIVIDER;
   
   cli ();
   G.timer1PeriodR    = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
@@ -854,18 +856,18 @@ void timerCalculate (void) {
   G.timer1PeriodHigh = G.timer1PeriodLow + G.timer1Step;
   sei ();
   cli ();
-  G.timer2PeriodR    = Settings.timerPeriod % (G.timer2Step * TIMER2_DIVIDER);
-  G.timer2PeriodLow  = (Settings.timerPeriod - G.timer2PeriodR) / TIMER2_DIVIDER;
+  G.timer2PeriodR    = timer1Period % (G.timer2Step * TIMER2_DIVIDER);
+  G.timer2PeriodLow  = (timer1Period - G.timer2PeriodR) / TIMER2_DIVIDER;
   G.timer2PeriodHigh = G.timer2PeriodLow + G.timer2Step;
   sei ();
   
 #ifdef DEBUG_VALUES
-    Debug.set ( 4, G.timer1PeriodLow);
-    Debug.set ( 5, G.timer1PeriodHigh);
-    Debug.set ( 6, G.timer1PeriodR);
-    Debug.set ( 7, G.timer2PeriodLow);
-    Debug.set ( 8, G.timer2PeriodHigh);
-    Debug.set ( 9, G.timer2PeriodR);
+  Debug.set ( 4, G.timer1PeriodLow);
+  Debug.set ( 5, G.timer1PeriodHigh);
+  Debug.set ( 6, G.timer1PeriodR);
+  Debug.set ( 7, G.timer2PeriodLow);
+  Debug.set ( 8, G.timer2PeriodHigh);
+  Debug.set ( 9, G.timer2PeriodR);
 #endif
 }
 /*********/
