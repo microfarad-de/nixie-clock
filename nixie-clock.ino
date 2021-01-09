@@ -67,7 +67,7 @@
 //#include "BuildDate.h"
 
 
-#define VALUE_DEBUG         // activate the debug values within the service menu
+#define DEBUG_VALUES        // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
@@ -128,25 +128,30 @@
 #define VOLTAGE_APIN   A7  // measures the retention super capacitor voltage
 
 // various constants
-#define TIMER1_DEFUALT_PERIOD  1000000       // default period for Timer1 in us (1 second)
-#define TIMER2_DIVIDER         40            // (Timer2 period) = (Timer1 period) / TIMER2_DIVIDER
+#define TIMER_DEFUALT_PERIOD   10000000      // default virtual period for Timer1/Timer2 in 1/10 us (total is 1 second)
+#define TIMER1_DIVIDER         10            // (real Timer1 period) = TIMER_DEFUALT_PERIOD / TIMER1_DIVIDER
+#define TIMER2_DIVIDER         400           // (real Timer2 period) = TIMER_DEFUALT_PERIOD / TIMER2_DIVIDER
 #define WDT_TIMEOUT            WDTO_4S       // watcchdog timer timeout setting
 #define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
-#define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))      // EEPROM address of the display brightness lookup table
+#define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
-#ifdef VALUE_DEBUG
-  #define NUM_DEBUG_VALUES     9             // total number of debug values shown in the service menu
+#ifdef DEBUG_VALUES
+  #define NUM_DEBUG_VALUES     10            // total number of debug values shown in the service menu
+  #define NUM_DEBUG_DIGITS     7             // number of digits for the debug values shown in the service menu  
 #else 
   #define NUM_DEBUG_VALUES     0
 #endif
-#define NUM_DEBUG_DIGITS       6             // number of digits for the debug values shown in the service menu  
-#define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)   // total number of values inside the service menu
+#define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)  // total number of values inside the service menu
 
 
 // conversion macros
-#define TIMER1_TO_SEC_PER_DAY(VAL) ((TIMER1_DEFUALT_PERIOD - (int32_t)VAL) * 86400 / 1000000) // extact the seconds-per-day clock drift from the Timer1 period
-#define SEC_PER_DAY_TO_TIMER1(VAL) (uint32_t)(TIMER1_DEFUALT_PERIOD - VAL * 1000000 / 86400)  // calculate the Timer1 period from the seconds-per-day clock drift
+
+// extact the seconds-per-day clock drift from the Timer1/Timer2 virtual period
+#define TIMER_TO_SEC_PER_DAY(VAL) ( ( TIMER_DEFUALT_PERIOD - (int32_t)VAL ) * 86400 / TIMER_DEFUALT_PERIOD )
+
+// calculate the Timer1/Timer2 virtual period from the seconds-per-day clock drift
+#define SEC_PER_DAY_TO_TIMER(VAL) (uint32_t)( TIMER_DEFUALT_PERIOD - VAL * TIMER_DEFUALT_PERIOD / 86400 )
 
 
 /*
@@ -159,11 +164,32 @@ enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_WEEK_E, SHOW_ALARM_E, SHOW_
                    SET_ALARM,   SET_SETTINGS,   SET_HOUR,    SET_MIN,      SET_SEC,      SET_DAY,          SET_MONTH,      SET_YEAR,   };
 
 
+#ifdef DEBUG_VALUES
+// Class for storing debug values
+class DebugClass {
+  public:
+    int32_t values[NUM_DEBUG_VALUES];
+    void initialize (void) {
+      for (uint8_t i = 0; i < NUM_DEBUG_VALUES; i++) {
+        set ( i, (int32_t)111111111 * i );
+        if (i % 2 != 0) {
+          values[i] = -values[i];
+        }
+      }
+    }
+    void set (uint8_t index, int32_t value) {
+      if (index < NUM_DEBUG_VALUES) {
+        values[index] = value;
+      }
+    }
+} Debug;
+#endif
+
 /*
  * Structure that holds the settings to be stored in EEPROM
  */
 struct Settings_t {
-  volatile uint32_t timer1Period = TIMER1_DEFUALT_PERIOD; // nominal period of Timer1 in microseconds
+  volatile uint32_t timerPeriod = TIMER_DEFUALT_PERIOD;  // virtual period of Timer1/Timer2 in 1/10 µs
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
   uint32_t nixieUptimeResetCode;  // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
   bool dcfSyncEnabled;            // enables DCF77 synchronization feature
@@ -225,12 +251,13 @@ struct SettingsLut_t {
 struct G_t {
   public:
     volatile uint32_t timer1Step;                  // minimum adjustment step for Timer1 in µs
-    volatile uint32_t timer1PeriodN;               // nearest multiple of TIMER1_STEP to timer1Period (rounded down)
     volatile uint32_t timer1PeriodR;               // remainder of timer1Period / timer1Step
+    volatile uint32_t timer1PeriodLow;             // timerPeriod rounded down to the multiple of timer1Step diveded by TIMER1_DIVIDER (µs)
+    volatile uint32_t timer1PeriodHigh;            // timerPeriod rounded up to the multiple of timer1Step diveded by TIMER1_DIVIDER (µs)
     volatile uint32_t timer2Step;                  // minimum adjustment step for Timers in µs
-    volatile uint32_t timer2Period;                // nominal period of Timer1 in microseconds
-    volatile uint32_t timer2PeriodN;               // nearest multiple of TIMER2_STEP to timer2Period (rounded down)
     volatile uint32_t timer2PeriodR;               // remainder of timer2Period / timer2Step
+    volatile uint32_t timer2PeriodLow;             // timerPeriod rounded down to the multiple of timer2Step diveded by TIMER2_DIVIDER
+    volatile uint32_t timer2PeriodHigh;            // timerPeriod rounded up to the multiple of timer2Step diveded by TIMER2_DIVIDER
     uint32_t dcfSyncInterval             = 0;      // DCF77 synchronization interval in minutes
     time_t lastDcfSyncTime               = 0;      // stores the time of last successful DCF77 synchronizaiton
     bool manuallyAdjusted                = true;   // prevent crystal drift compensation if clock was manually adjusted  
@@ -256,10 +283,6 @@ struct G_t {
     // dynamically defines the order of the menu items
     MenuState_e menuOrder[MENU_ORDER_LIST_SIZE] = 
        { SHOW_STOPWATCH_E, SHOW_TIMER_E, SHOW_SERVICE_E }; 
-
-#ifdef VALUE_DEBUG
-    int32_t debugValue[NUM_DEBUG_VALUES];          // values used for general purpose debugging
-#endif
 } G;
 
 /*
@@ -305,14 +328,9 @@ void setup() {
   Serial.begin (SERIAL_BAUD);
 #endif
 
-#ifdef VALUE_DEBUG
+#ifdef DEBUG_VALUES
   // initialize the debug values
-  for (i = 0; i < NUM_DEBUG_VALUES; i++) {
-    G.debugValue[i] = (int32_t)111111111 * (i + 1);
-    if (i % 2 == 0) {
-      G.debugValue[i] = -G.debugValue[i];
-    }
-  }
+  Debug.initialize ();
 #endif
   
   PRINTLN (" ");
@@ -346,8 +364,9 @@ void setup() {
   //PRINTLN (Settings.nixieUptimeResetCode, HEX);
 
   // validate the Timer1 period loaded from EEPROM
-  if (Settings.timer1Period < TIMER1_DEFUALT_PERIOD - 10000 ||
-      Settings.timer1Period > TIMER1_DEFUALT_PERIOD + 10000) Settings.timer1Period = TIMER1_DEFUALT_PERIOD;
+  if (Settings.timerPeriod < TIMER_DEFUALT_PERIOD - TIMER_DEFUALT_PERIOD / 100 ||
+      Settings.timerPeriod > TIMER_DEFUALT_PERIOD + TIMER_DEFUALT_PERIOD / 100) 
+          Settings.timerPeriod = TIMER_DEFUALT_PERIOD;
 
   // reset nixie tube uptime on first-time boot
   if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_CODE) {
@@ -379,21 +398,21 @@ void setup() {
     if (*SettingsLut[i].value < SettingsLut[i].minVal || *SettingsLut[i].value > SettingsLut[i].maxVal) *SettingsLut[i].value = SettingsLut[i].defaultVal;
   }
 
-  PRINT   ("[setup] timer1Period=");
-  PRINTLN (Settings.timer1Period, DEC);
+  PRINT   ("[setup] timerPeriod=");
+  PRINTLN (Settings.timerPeriod, DEC);
   
-  // derive the seconds-per-day correction value from the current timer1Period
-  Settings.secPerDayCorrect = TIMER1_TO_SEC_PER_DAY (Settings.timer1Period);
+  // derive the seconds-per-day correction value from the current timerPeriod
+  Settings.secPerDayCorrect = TIMER_TO_SEC_PER_DAY (Settings.timerPeriod);
   //PRINT   ("[setup] secPerDayCorrect=");
   //PRINTLN (Settings.secPerDayCorrect, DEC);
   
   // initialize Timer1 to trigger timer1ISR once per second
-  G.timer1Step = Timer1.initialize (Settings.timer1Period);
+  G.timer1Step = Timer1.initialize (Settings.timerPeriod / TIMER1_DIVIDER);
   Timer1.attachInterrupt (timer1ISR);
 
   // Timer2 is used for Chronometer and Countdown Timer features
   // Timer2 has a maximum period of 32768us
-  G.timer2Step = Timer2.initialize (Settings.timer1Period / TIMER2_DIVIDER); 
+  G.timer2Step = Timer2.initialize (Settings.timerPeriod / TIMER2_DIVIDER); 
   Timer2.attachInterrupt (timer2ISR);
   cli ();
   Timer2.stop ();
@@ -590,18 +609,18 @@ void timer1ISR (void) {
 
   // dynamically adjust the timer period to account for fractions of a step
   if (fractCount < G.timer1PeriodR && toggleFlag == false) {
-    Timer1.setPeriod (G.timer1PeriodN + G.timer1Step);
+    Timer1.setPeriod (G.timer1PeriodHigh);
     toggleFlag = true;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
   if (fractCount >= G.timer1PeriodR && toggleFlag == true) {
-    Timer1.setPeriod (G.timer1PeriodN);
+    Timer1.setPeriod (G.timer1PeriodLow);
     toggleFlag = false;
   }
 
   fractCount++;
-  if (fractCount >= G.timer1Step) {
+  if (fractCount >= G.timer1Step * TIMER1_DIVIDER) {
     fractCount = 0;
   }
 
@@ -626,31 +645,31 @@ void timer2ISR (void) {
   G.timer2TenthCounter++;
   
   // 1s period = 25ms * 40
-  if (G.timer2SecCounter >= TIMER2_DIVIDER) {
+  if (G.timer2SecCounter >= TIMER2_DIVIDER / TIMER1_DIVIDER) {
     CdTimer.tick ();
     G.timer2SecCounter = 0;
   }
 
   // 1/10s period = 25ms * 4
-  if (G.timer2TenthCounter >= (TIMER2_DIVIDER / 10)) {
+  if (G.timer2TenthCounter >= (TIMER2_DIVIDER / (TIMER1_DIVIDER * 10))) {
     Stopwatch.tick ();
     G.timer2TenthCounter = 0;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
   if (fractCount < G.timer2PeriodR && toggleFlag == false) {
-    Timer2.setPeriod (G.timer2PeriodN + G.timer2Step);
+    Timer2.setPeriod (G.timer2PeriodHigh);
     toggleFlag = true;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
   if (fractCount >= G.timer2PeriodR && toggleFlag == true) {
-    Timer2.setPeriod (G.timer2PeriodN);
+    Timer2.setPeriod (G.timer2PeriodLow);
     toggleFlag = false;
   }
 
   fractCount++;
-  if (fractCount >= G.timer2Step) {
+  if (fractCount >= G.timer2Step * TIMER2_DIVIDER) {
     fractCount = 0;
   }  
 }
@@ -751,14 +770,11 @@ void syncToDCF (void) {
 
       // calibrate timer1 to compensate for crystal drift
       if (abs (delta) < 60 && timeSinceLastSync > 1800 && !G.manuallyAdjusted && !coldStart) {
-#ifdef VALUE_DEBUG
+#ifdef DEBUG_VALUES
         // for debugging the calibration inaccuracy issue
-        if (NUM_DEBUG_VALUES >= 4) {
-          G.debugValue[0] = (int32_t)timeSinceLastSync;
-          G.debugValue[1] = (int32_t)G.systemTm->tm_hour*10000 + (int32_t)G.systemTm->tm_min*100 + (int32_t)G.systemTm->tm_sec;
-          G.debugValue[2] = (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec;
-          G.debugValue[3] = deltaMs;
-        }
+        Debug.set ( 0, (int32_t)timeSinceLastSync );
+        Debug.set ( 1, (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec);
+        Debug.set ( 2, deltaMs);
 #endif
         timerCalibrate (timeSinceLastSync, deltaMs);     
       }
@@ -816,19 +832,16 @@ void syncToDCF (void) {
 void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   int32_t errorPPM;
 
-  errorPPM = (timeOffsetMs * 1000) / (int32_t)measDuration;
+  errorPPM = (timeOffsetMs * 1000 * TIMER1_DIVIDER) / (int32_t)measDuration;
   
-  Settings.timer1Period += errorPPM;
+  Settings.timerPeriod += errorPPM;
   timerCalculate ();
   
-  // derive the seconds-per-day corretion value from the current timer1Period
-  Settings.secPerDayCorrect = TIMER1_TO_SEC_PER_DAY (Settings.timer1Period);
+  // derive the seconds-per-day corretion value from the current timerPeriod
+  Settings.secPerDayCorrect = TIMER_TO_SEC_PER_DAY (Settings.timerPeriod);
   
-#ifdef VALUE_DEBUG
-  // for debugging the calibration inaccuracy issue
-  if (NUM_DEBUG_VALUES >= 5) {
-    G.debugValue[4] = errorPPM;
-  }
+#ifdef DEBUG_VALUES
+  Debug.set ( 3, errorPPM);
 #endif
 
   PRINT   ("[timerCalibrate] measDuration=");
@@ -837,8 +850,8 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   PRINTLN (timeOffsetMs, DEC);
   PRINT   ("[timerCalibrate] errorPPM=");
   PRINTLN (errorPPM, DEC);
-  PRINT   ("[timerCalibrate] timer1Period=");
-  PRINTLN (Settings.timer1Period, DEC);
+  PRINT   ("[timerCalibrate] timerPeriod=");
+  PRINTLN (Settings.timerPeriod, DEC);
 }
 /*********/
 
@@ -850,23 +863,23 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
  ***********************************/
 void timerCalculate (void) {
   cli ();
-  G.timer1PeriodR = Settings.timer1Period % G.timer1Step;
-  G.timer1PeriodN = Settings.timer1Period - G.timer1PeriodR;
+  G.timer1PeriodR    = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
+  G.timer1PeriodLow  = (Settings.timerPeriod - G.timer1PeriodR) / TIMER1_DIVIDER;
+  G.timer1PeriodHigh = G.timer1PeriodLow + G.timer1Step;
   sei ();
-  G.timer2Period  = Settings.timer1Period / TIMER2_DIVIDER;
   cli ();
-  G.timer2PeriodR = G.timer2Period % G.timer2Step;
-  G.timer2PeriodN = G.timer2Period - G.timer2PeriodR;
+  G.timer2PeriodR    = Settings.timerPeriod % (G.timer2Step * TIMER2_DIVIDER);
+  G.timer2PeriodLow  = (Settings.timerPeriod - G.timer2PeriodR) / TIMER2_DIVIDER;
+  G.timer2PeriodHigh = G.timer2PeriodLow + G.timer2Step;
   sei ();
   
-#ifdef VALUE_DEBUG
-  // for debugging the calibration inaccuracy issue
-  if (NUM_DEBUG_VALUES >= 9) {
-    G.debugValue[5] = G.timer1PeriodN;
-    G.debugValue[6] = G.timer1PeriodR;
-    G.debugValue[7] = G.timer2PeriodN;
-    G.debugValue[8] = G.timer2PeriodR;
-  }
+#ifdef DEBUG_VALUES
+    Debug.set ( 4, G.timer1PeriodLow);
+    Debug.set ( 5, G.timer1PeriodHigh);
+    Debug.set ( 6, G.timer1PeriodR);
+    Debug.set ( 7, G.timer2PeriodLow);
+    Debug.set ( 8, G.timer2PeriodHigh);
+    Debug.set ( 9, G.timer2PeriodR);
 #endif
 }
 /*********/
@@ -1481,11 +1494,11 @@ void settingsMenu (void) {
         SHOW_SERVICE_ENTRY_POINT:
         // show Timer1 period (default)
         if (vIdx == 0) {
-          valueDigits.numDigits = 9;
-          Nixie.dec2bcd (Settings.timer1Period, &valueDigits, 7);
-          valueDigits.value[8] = 1;
-          valueDigits.comma[8] = true;
-          valueDigits.blank[7] = true;
+          valueDigits.numDigits = 10;
+          Nixie.dec2bcd (Settings.timerPeriod, &valueDigits, 8);
+          valueDigits.value[9] = 1;
+          valueDigits.comma[9] = true;
+          valueDigits.blank[8] = true;
         }
         // show Nixie tube uptime
         else if (vIdx == 1) {
@@ -1512,7 +1525,7 @@ void settingsMenu (void) {
           valueDigits.value[1] = dec2bcdHigh (VERSION_MAINT);
           valueDigits.value[0] = dec2bcdLow (VERSION_MAINT);  
         }
-#ifdef VALUE_DEBUG   
+#ifdef DEBUG_VALUES   
         // show the Debug values
         else if (vIdx > 2 && vIdx < NUM_SERVICE_VALUES) {
           uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
@@ -1521,12 +1534,12 @@ void settingsMenu (void) {
           valueDigits.comma[NUM_DEBUG_DIGITS]     = true;
           valueDigits.blank[NUM_DEBUG_DIGITS]     = true;
           if (idx < NUM_DEBUG_VALUES)  {   
-            if (G.debugValue[idx] < 0) {
-              Nixie.dec2bcd ((uint32_t)(-G.debugValue[idx]), &valueDigits, NUM_DEBUG_DIGITS);
+            if (Debug.values[idx] < 0) {
+              Nixie.dec2bcd ((uint32_t)(-Debug.values[idx]), &valueDigits, NUM_DEBUG_DIGITS);
               for (i = 0; i < NUM_DEBUG_DIGITS; i++) valueDigits.comma[i] = true;
             }
             else {
-              Nixie.dec2bcd ((uint32_t)G.debugValue[idx], &valueDigits, NUM_DEBUG_DIGITS);
+              Nixie.dec2bcd ((uint32_t)Debug.values[idx], &valueDigits, NUM_DEBUG_DIGITS);
             }
           }
           else {
@@ -1663,8 +1676,8 @@ void settingsMenu (void) {
           
           // if seconds-per-day correction value has been set
           if (SettingsLut[sIdx].value == &Settings.secPerDayCorrect) {
-            // derive new timer1Period
-            Settings.timer1Period = SEC_PER_DAY_TO_TIMER1 (Settings.secPerDayCorrect);
+            // derive new timerPeriod
+            Settings.timerPeriod = SEC_PER_DAY_TO_TIMER (Settings.secPerDayCorrect);
             timerCalculate ();
           } 
           // if auto brightness feature was activated/deactivated
