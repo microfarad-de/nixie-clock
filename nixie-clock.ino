@@ -144,16 +144,6 @@
 #endif
 #define NUM_SERVICE_VALUES     (3 + NUM_DEBUG_VALUES)  // total number of values inside the service menu
 
-
-// conversion macros
-
-// extact the seconds-per-day clock drift from the Timer1/Timer2 virtual period
-#define TIMER_TO_SEC_PER_DAY(VAL) ( ( TIMER_DEFUALT_PERIOD - (int32_t)VAL ) * 86400 / TIMER_DEFUALT_PERIOD )
-
-// calculate the Timer1/Timer2 virtual period from the seconds-per-day clock drift
-#define SEC_PER_DAY_TO_TIMER(VAL) (uint32_t)( TIMER_DEFUALT_PERIOD - VAL * TIMER_DEFUALT_PERIOD / 86400 )
-
-
 /*
  * Enumerations for the states of the menu navigation state machine
  * the program relies on the exact order of the below definitions
@@ -200,7 +190,7 @@ struct Settings_t {
   uint8_t blankScreenFinishHr;    // finish hour for disabling the display
   uint8_t cathodePoisonPrevent;   // enables cathode poisoning prevention measure by cycling through all digits (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
   uint8_t cppStartHr;             // start hour for the cathode poisoning prevention measure
-  int8_t secPerDayCorrect;        // manual Timer1 drift correction in seconds per day
+  int8_t clockDriftCorrect;       // manual clock drift correction
   uint8_t reserved0;              // reserved for future use
   bool brightnessAutoAdjust;      // enables the brightness auto-adjustment feature
   bool brightnessBoost;           // enables the brightness boosting feature
@@ -241,7 +231,7 @@ struct SettingsLut_t {
   { (int8_t *)&Settings.dcfSyncEnabled,         5, 1, false, true,  true }, // DCF sync
   { (int8_t *)&Settings.dcfSignalIndicator,     5, 2, false, true,  true }, //  - signal indicator
   { (int8_t *)&Settings.dcfSyncHour,            5, 3,     0,   23,     3 }, //  - sync hour
-  { (int8_t *)&Settings.secPerDayCorrect,       6, 1,   -99,   99,     0 }, // clock drift correction (seconds per day)
+  { (int8_t *)&Settings.clockDriftCorrect,      6, 1,   -99,   99,     0 }, // manual clock drift correction
   { (int8_t *)&Settings.weekStartDay,           6, 2,     1,    7,     7 }  // start day of the week (1 = Monday, 7 = Sunday)
 };
 
@@ -400,11 +390,6 @@ void setup() {
 
   PRINT   ("[setup] timerPeriod=");
   PRINTLN (Settings.timerPeriod, DEC);
-  
-  // derive the seconds-per-day correction value from the current timerPeriod
-  Settings.secPerDayCorrect = TIMER_TO_SEC_PER_DAY (Settings.timerPeriod);
-  //PRINT   ("[setup] secPerDayCorrect=");
-  //PRINTLN (Settings.secPerDayCorrect, DEC);
   
   // initialize Timer1 to trigger timer1ISR once per second
   G.timer1Step = Timer1.initialize (Settings.timerPeriod / TIMER1_DIVIDER);
@@ -836,9 +821,6 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   
   Settings.timerPeriod += errorPPM;
   timerCalculate ();
-  
-  // derive the seconds-per-day corretion value from the current timerPeriod
-  Settings.secPerDayCorrect = TIMER_TO_SEC_PER_DAY (Settings.timerPeriod);
   
 #ifdef DEBUG_VALUES
   Debug.set ( 3, errorPPM);
@@ -1647,12 +1629,18 @@ void settingsMenu (void) {
       if (Button[0].falling ()) {   
         sIdx++;
         if (sIdx >= SETTINGS_LUT_SIZE) sIdx = 0;
+        
+        // reset the clock drift correction value, it is used for display purposes only
+        if (SettingsLut[sIdx].value == &Settings.clockDriftCorrect) {
+          Settings.clockDriftCorrect = 0;
+        }
+        
         valueDigits.value[5] = SettingsLut[sIdx].idDigit1;
         valueDigits.value[4] = SettingsLut[sIdx].idDigit0;
         val8 = *SettingsLut[sIdx].value;
         valueDigits.comma[2] = (val8 < 0);
         valueDigits.value[1] = dec2bcdHigh ((uint8_t)abs(val8)); 
-        valueDigits.value[0] = dec2bcdLow ((uint8_t)abs(val8));  
+        valueDigits.value[0] = dec2bcdLow ((uint8_t)abs(val8));
       }
       // button 1 or 2 pressed --> increase/decrease value
       else if (Button[1].pressed || Button[2].pressed) {
@@ -1674,10 +1662,14 @@ void settingsMenu (void) {
           Nixie.refresh ();
           scrollTs = ts;
           
-          // if seconds-per-day correction value has been set
-          if (SettingsLut[sIdx].value == &Settings.secPerDayCorrect) {
-            // derive new timerPeriod
-            Settings.timerPeriod = SEC_PER_DAY_TO_TIMER (Settings.secPerDayCorrect);
+          // if clock drift correction value has been set
+          if (SettingsLut[sIdx].value == &Settings.clockDriftCorrect) {
+            if (Button[1].pressed) {
+              Settings.timerPeriod++;
+            }
+            else {
+              Settings.timerPeriod--;
+            } 
             timerCalculate ();
           } 
           // if auto brightness feature was activated/deactivated
