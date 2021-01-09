@@ -128,9 +128,11 @@
 #define VOLTAGE_APIN   A7  // measures the retention super capacitor voltage
 
 // various constants
-#define TIMER_DEFUALT_PERIOD   10000000      // default virtual period for Timer1/Timer2 in 1/10 us (total is 1 second)
-#define TIMER1_DIVIDER         10            // (real Timer1 period) = TIMER_DEFUALT_PERIOD / TIMER1_DIVIDER
-#define TIMER2_DIVIDER         400           // (real Timer2 period) = TIMER_DEFUALT_PERIOD / TIMER2_DIVIDER
+#define TIMER_DEFUALT_PERIOD   10000000      // default value of timerPeriod in 1/10 us (total is 1 second)
+#define TIMER_MIN_PERIOD       (TIMER_DEFUALT_PERIOD - TIMER_DEFUALT_PERIOD / 100)  // minimum allowed value of timerPeriod
+#define TIMER_MAX_PERIOD       (TIMER_DEFUALT_PERIOD + TIMER_DEFUALT_PERIOD / 100)  // maximum allowed value of timerPeriod
+#define TIMER1_DIVIDER         10                     // (real Timer1 period) = TIMER_DEFUALT_PERIOD / TIMER1_DIVIDER
+#define TIMER2_DIVIDER         (40 * TIMER1_DIVIDER)  // (real Timer2 period) = TIMER_DEFUALT_PERIOD / TIMER2_DIVIDER
 #define WDT_TIMEOUT            WDTO_4S       // watcchdog timer timeout setting
 #define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
@@ -354,8 +356,7 @@ void setup() {
   //PRINTLN (Settings.nixieUptimeResetCode, HEX);
 
   // validate the Timer1 period loaded from EEPROM
-  if (Settings.timerPeriod < TIMER_DEFUALT_PERIOD - TIMER_DEFUALT_PERIOD / 100 ||
-      Settings.timerPeriod > TIMER_DEFUALT_PERIOD + TIMER_DEFUALT_PERIOD / 100) 
+  if (Settings.timerPeriod < TIMER_MIN_PERIOD || Settings.timerPeriod > TIMER_MAX_PERIOD) 
           Settings.timerPeriod = TIMER_DEFUALT_PERIOD;
 
   // reset nixie tube uptime on first-time boot
@@ -844,6 +845,9 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
  * out of the Timer1 period
  ***********************************/
 void timerCalculate (void) {
+  if (Settings.timerPeriod < TIMER_MIN_PERIOD) Settings.timerPeriod = TIMER_MIN_PERIOD;
+  if (Settings.timerPeriod > TIMER_MAX_PERIOD) Settings.timerPeriod = TIMER_MAX_PERIOD;
+  
   cli ();
   G.timer1PeriodR    = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
   G.timer1PeriodLow  = (Settings.timerPeriod - G.timer1PeriodR) / TIMER1_DIVIDER;
