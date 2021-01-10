@@ -1027,7 +1027,7 @@ void powerSave (void) {
         set_sleep_mode (SLEEP_MODE_PWR_DOWN);
         mode = DEEP_SLEEP;
         G.dcfSyncActive = true;        // time must be synced to DCF77 upon power re-connect
-        G.manuallyAdjusted = true;     // inaccurate time-keeping should never be used for Timer1 calibration
+        G.manuallyAdjusted = true;     // inaccurate time-keeping should never be used for timer calibration
       }  
     }
     // Deep Sleep:
@@ -1392,29 +1392,20 @@ void settingsMenu (void) {
         nextState = SHOW_TIME_E; // if feature was used, return to time display upon pressing button 0
         reorderMenu (menuIdx); // if feature was used, it will appear first once the menu is accessed
       }
-      // button 1 - falling edge --> increment minutes / arm countdown timer
-      else if (Button[1].falling ()) {
-        if (!CdTimer.active) Stopwatch.reset ();
-        if (CdTimer.alarm) CdTimer.resetAlarm ();
-        else               CdTimer.minuteIncrease ();  
+      // button 1 or 2 - falling edge --> reset timer alarm
+      else if (Button[1].falling () || Button[2].falling ()) {
+        CdTimer.resetAlarm ();
         nextState = SHOW_TIME_E;
         reorderMenu (menuIdx);
       }
-      // button 2 - falling edge --> decrement minutes / arm countdown timer
-      else if (Button[2].falling ()) {
-        if (!CdTimer.active) Stopwatch.reset ();
-        if (CdTimer.alarm) CdTimer.resetAlarm ();
-        else               CdTimer.minuteDecrease ();
-        nextState = SHOW_TIME_E;
-        reorderMenu (menuIdx);
-      }
-      // button 1 or 2 - long press --> increase/decrease /*seconds then*/ minutes / arm countdown timer
-      else if (Button[1].longPressContinuous () || Button[2].longPressContinuous ()) {
+      // button 1 or 2 - pressed --> increase/decrease minutes / arm countdown timer
+      else if (Button[1].pressed || Button[2].pressed) {
         if (ts - scrollTs >= scrollDelay) {
           if (!CdTimer.active) Stopwatch.reset ();
-          if (Button[1].pressed) CdTimer.minuteIncrease ();
-          else                   CdTimer.minuteDecrease ();
-          CdTimer.resetAlarm ();
+          if (!CdTimer.alarm) {
+            if (Button[1].pressed) CdTimer.minuteIncrease ();
+            else                   CdTimer.minuteDecrease ();
+          }
           scrollTs  = ts;
           nextState = SHOW_TIME_E;
           reorderMenu (menuIdx);
