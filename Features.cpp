@@ -155,6 +155,7 @@ void ChronoClass::roundup (void) volatile {
   tenth = 0;
   if (second !=0) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
+  if (second == 0 && minute == 0) minute = 1;
 }
 
 /*#######################################################################################*/
@@ -175,7 +176,6 @@ void CdTimerClass::loopHandler (void) {
     if (!alarm) {
       alarm = tm.decrementSec (); 
       if (alarm) {
-        //stop ();
         alarmTs = ts;
         tm.copy (&defaultTm);
         Nixie.resetBlinking ();
@@ -200,35 +200,27 @@ void CdTimerClass::tick (void) {
 }
 
 void CdTimerClass::secondIncrease (void) {
-  stop ();
   tm.increment10sec ();
   displayRefresh ();
-  start ();
+  defaultTm.copy (&tm);
 }
 
 void CdTimerClass::secondDecrease (void) {
-  bool rv;
-  stop ();
-  rv = tm.decrement10sec ();
+  tm.decrement10sec ();
   displayRefresh ();
-  if (rv) stop ();
-  else start ();
+  defaultTm.copy (&tm);
 }
 
 void CdTimerClass::minuteIncrease (void) {
-  stop ();
   tm.incrementMin ();
   displayRefresh ();
-  start ();
+  defaultTm.copy (&tm);
 }
 
 void CdTimerClass::minuteDecrease (void) {
-  bool rv;
-  stop ();
-  rv = tm.decrementMin ();
+  tm.decrementMin ();
   displayRefresh ();
-  if (rv) stop ();
-  else start ();
+  defaultTm.copy (&tm);
 }
 
 void CdTimerClass::displayRefresh (void) {
@@ -241,9 +233,8 @@ void CdTimerClass::displayRefresh (void) {
 }
 
 void CdTimerClass::start (void) {
-  defaultTm.copy (&tm);
-  active = true;
   if (!running) {
+    active = true;
     running = true;
     callback (true);
   }  

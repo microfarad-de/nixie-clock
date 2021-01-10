@@ -1384,8 +1384,12 @@ void settingsMenu (void) {
       // button 0 - long press --> reset the countdown timer
       if (Button[0].longPress ()) { 
         Nixie.blinkOnce ();
-        if (CdTimer.active) {
-          CdTimer.reset (); 
+        if (CdTimer.running) {
+          CdTimer.stop (); 
+          CdTimer.resetAlarm ();
+        }
+        else if (CdTimer.active) {
+          CdTimer.reset ();
         }
         else {
           Stopwatch.reset ();
@@ -1403,7 +1407,6 @@ void settingsMenu (void) {
       // button 1 or 2 - pressed --> increase/decrease minutes / arm countdown timer
       else if (Button[1].pressed || Button[2].pressed) {
         if (ts - scrollTs >= scrollDelay) {
-          if (!CdTimer.active) Stopwatch.reset ();
           if (!CdTimer.alarm) {
             if (Button[1].pressed) CdTimer.minuteIncrease ();
             else                   CdTimer.minuteDecrease ();
@@ -1635,7 +1638,7 @@ void settingsMenu (void) {
         if (sIdx >= SETTINGS_LUT_SIZE) sIdx = 0;
         
         // reset the clock drift correction value, it is used for display purposes only
-        if (SettingsLut[sIdx].value == &Settings.clockDriftCorrect) {
+        if (SettingsLut[sIdx].value == (int8_t *)&Settings.clockDriftCorrect) {
           Settings.clockDriftCorrect = 0;
         }
         
@@ -1667,13 +1670,9 @@ void settingsMenu (void) {
           scrollTs = ts;
           
           // if clock drift correction value has been set
-          if (SettingsLut[sIdx].value == &Settings.clockDriftCorrect) {
-            if (Button[1].pressed) {
-              Settings.timerPeriod++;
-            }
-            else {
-              Settings.timerPeriod--;
-            } 
+          if (SettingsLut[sIdx].value == (int8_t *)&Settings.clockDriftCorrect) {
+            if (Button[1].pressed) Settings.timerPeriod++;
+            else                   Settings.timerPeriod--;
             timerCalculate ();
             G.manuallyAdjusted = true;
           } 
@@ -1681,12 +1680,12 @@ void settingsMenu (void) {
           else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessAutoAdjust) {
             Brightness.autoEnable (Settings.brightnessAutoAdjust);
           }
-        #ifndef SERIAL_DEBUG
+#ifndef SERIAL_DEBUG
           // if the brighness boost feature has been activated/deactivated
           else if (SettingsLut[sIdx].value == (int8_t *)&Settings.brightnessBoost) {
             Brightness.boostEnable (Settings.brightnessBoost);
           }
-        #endif
+#endif
         }
       }
       
