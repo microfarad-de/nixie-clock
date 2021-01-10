@@ -318,12 +318,12 @@ void StopwatchClass::pause (bool enable) {
   if (enable && running) {
     paused = true;
     Nixie.resetBlinking ();
-    for (i = 0; i < 6; i++) digits.blnk[i] = true;  
+    for (i = 0; i < 6; i++) digits.blink[i] = true;  
   }
   else {
     paused = false;
     displayRefresh ();
-    for (i = 0; i < 6; i++) digits.blnk[i] = false;
+    for (i = 0; i < 6; i++) digits.blink[i] = false;
   }
   
 }
@@ -344,7 +344,7 @@ void StopwatchClass::reset (void) {
   running = false;
   paused = false;
   Nixie.resetDigits (&digits);
-  for (i = 0; i < 6; i++) digits.blnk[i] = false;
+  for (i = 0; i < 6; i++) digits.blink[i] = false;
   tm.reset ();
   displayRefresh ();
   callback (false);

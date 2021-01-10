@@ -67,7 +67,7 @@
 //#include "BuildDate.h"
 
 
-#define DEBUG_VALUES        // activate the debug values within the service menu
+//#define DEBUG_VALUES        // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
@@ -1266,6 +1266,7 @@ void settingsMenu (void) {
         Alarm.resetAlarm ();  // stop the alarm clock
       }
       else {
+        if (G.menuState >= SET_ALARM) Nixie.blinkOnce ();
         G.menuState = returnState;
       }
     }
@@ -1313,7 +1314,7 @@ void settingsMenu (void) {
       Nixie.enable (true);
       Nixie.cancelScroll ();
       Nixie.setDigits (&G.timeDigits);
-      for (i = 0; i < 6; i++) G.timeDigits.blnk[i] = false;
+      for (i = 0; i < 6; i++) G.timeDigits.blink[i] = false;
       menuIdx = 0;
       nextState = G.menuOrder[menuIdx]; // switch to this state after short-pressing button 0
                                         // use dynamic menu ordering
@@ -1327,7 +1328,7 @@ void settingsMenu (void) {
       Nixie.setDigits (&G.dateDigits);
       G.dateDigits.comma[4] = true;
       G.dateDigits.comma[2] = true;
-      for (i = 0; i < 6; i++) G.dateDigits.blnk[i] = false;
+      for (i = 0; i < 6; i++) G.dateDigits.blink[i] = false;
       //menuIdx = 0;
       nextState   = SHOW_TIME_E;
       returnState = SET_DAY_E;
@@ -1358,7 +1359,7 @@ void settingsMenu (void) {
     case SHOW_ALARM_E:
       Nixie.setDigits (&Alarm.digits);
       Alarm.displayRefresh ();
-      for (i = 0; i < 6; i++) Alarm.digits.blnk[i] = false;
+      for (i = 0; i < 6; i++) Alarm.digits.blink[i] = false;
       //menuIdx = 0;
       nextState   = SHOW_TIME_E;
       returnState = SET_ALARM_E;
@@ -1382,6 +1383,7 @@ void settingsMenu (void) {
       
       // button 0 - long press --> reset the countdown timer
       if (Button[0].longPress ()) { 
+        Nixie.blinkOnce ();
         if (CdTimer.active) {
           CdTimer.reset (); 
         }
@@ -1427,11 +1429,10 @@ void settingsMenu (void) {
     
       // button 0 - long press --> reset the stopwatch
       if (Button[0].longPress ()) { 
-        if (!CdTimer.active) {
-          Stopwatch.reset ();
-          nextState = SHOW_TIME_E;
-          reorderMenu (menuIdx);
-        } 
+        Stopwatch.reset ();
+        Nixie.blinkOnce ();
+        nextState = SHOW_TIME_E;
+        reorderMenu (menuIdx);
       }
       // button 1 rising edge --> start/stop stopwatch
       else if (Button[1].rising ()) {
@@ -1557,10 +1558,10 @@ void settingsMenu (void) {
     case SET_ALARM_E:
       Nixie.setDigits (&Alarm.digits);
       Alarm.displayRefresh ();
-      for (i = 0; i < 6; i++) Alarm.digits.blnk[i] = false;
+      for (i = 0; i < 6; i++) Alarm.digits.blink[i] = false;
       sIdx = 0;
-      Alarm.digits.blnk[5] = true;
-      Alarm.digits.blnk[4] = true;
+      Alarm.digits.blink[5] = true;
+      Alarm.digits.blink[4] = true;
       returnState = SHOW_ALARM_E;
       G.menuState = SET_ALARM;
     case SET_ALARM:
@@ -1568,22 +1569,22 @@ void settingsMenu (void) {
       if (Button[0].falling ()) {   
         sIdx++; if (sIdx > 2) sIdx = 0;
         if (sIdx == 0) {
-          Alarm.digits.blnk[5] = true;
-          Alarm.digits.blnk[4] = true;
-          Alarm.digits.blnk[1] = false;
-          Alarm.digits.blnk[0] = false;
+          Alarm.digits.blink[5] = true;
+          Alarm.digits.blink[4] = true;
+          Alarm.digits.blink[1] = false;
+          Alarm.digits.blink[0] = false;
         }
         else if (sIdx == 1) {
-          Alarm.digits.blnk[5] = false;
-          Alarm.digits.blnk[4] = false;
-          Alarm.digits.blnk[3] = true;
-          Alarm.digits.blnk[2] = true;
+          Alarm.digits.blink[5] = false;
+          Alarm.digits.blink[4] = false;
+          Alarm.digits.blink[3] = true;
+          Alarm.digits.blink[2] = true;
         }
         else if (sIdx == 2) {
-          Alarm.digits.blnk[3] = false;
-          Alarm.digits.blnk[2] = false;
-          Alarm.digits.blnk[1] = true;
-          Alarm.digits.blnk[0] = true;
+          Alarm.digits.blink[3] = false;
+          Alarm.digits.blink[2] = false;
+          Alarm.digits.blink[1] = true;
+          Alarm.digits.blink[0] = true;
         }
       }
       // button 1 or 2 - pressed --> increase/decrease value
@@ -1611,10 +1612,10 @@ void settingsMenu (void) {
     case SET_SETTINGS_E:
       Nixie.cancelScroll ();
       Nixie.setDigits (&valueDigits);
-      valueDigits.blnk[0]  = true;
-      valueDigits.blnk[1]  = true;
-      valueDigits.blnk[4]  = false;
-      valueDigits.blnk[5]  = false;
+      valueDigits.blink[0]  = true;
+      valueDigits.blink[1]  = true;
+      valueDigits.blink[4]  = false;
+      valueDigits.blink[5]  = false;
       valueDigits.blank[2] = true;
       valueDigits.blank[3] = true;
       valueDigits.comma[5] = true;
@@ -1695,12 +1696,12 @@ void settingsMenu (void) {
     case SET_HOUR_E:
       Nixie.cancelScroll ();
       Nixie.setDigits (&G.timeDigits);
-      G.timeDigits.blnk[0] = false;
-      G.timeDigits.blnk[1] = false;
-      G.timeDigits.blnk[2] = false;
-      G.timeDigits.blnk[3] = false;
-      G.timeDigits.blnk[4] = true;
-      G.timeDigits.blnk[5] = true;
+      G.timeDigits.blink[0] = false;
+      G.timeDigits.blink[1] = false;
+      G.timeDigits.blink[2] = false;
+      G.timeDigits.blink[3] = false;
+      G.timeDigits.blink[4] = true;
+      G.timeDigits.blink[5] = true;
       nextState   = SET_MIN_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_HOUR;
@@ -1726,12 +1727,12 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_MIN_E:
       Nixie.setDigits (&G.timeDigits);
-      G.timeDigits.blnk[0] = false;
-      G.timeDigits.blnk[1] = false;
-      G.timeDigits.blnk[2] = true;
-      G.timeDigits.blnk[3] = true;
-      G.timeDigits.blnk[4] = false;
-      G.timeDigits.blnk[5] = false;
+      G.timeDigits.blink[0] = false;
+      G.timeDigits.blink[1] = false;
+      G.timeDigits.blink[2] = true;
+      G.timeDigits.blink[3] = true;
+      G.timeDigits.blink[4] = false;
+      G.timeDigits.blink[5] = false;
       nextState   = SET_SEC_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_MIN;
@@ -1757,12 +1758,12 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_SEC_E:
       Nixie.setDigits (&G.timeDigits);
-      G.timeDigits.blnk[0] = true;
-      G.timeDigits.blnk[1] = true;
-      G.timeDigits.blnk[2] = false;
-      G.timeDigits.blnk[3] = false;
-      G.timeDigits.blnk[4] = false;
-      G.timeDigits.blnk[5] = false;
+      G.timeDigits.blink[0] = true;
+      G.timeDigits.blink[1] = true;
+      G.timeDigits.blink[2] = false;
+      G.timeDigits.blink[3] = false;
+      G.timeDigits.blink[4] = false;
+      G.timeDigits.blink[5] = false;
       nextState   = SET_DAY_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_SEC;
@@ -1770,8 +1771,8 @@ void settingsMenu (void) {
       // button 1 - rising edge --> stop Timer1 then reset seconds to 0
       if (Button[1].rising ()) {
         timeoutTs = ts; // reset the menu timeout
-        G.timeDigits.blnk[0] = false;
-        G.timeDigits.blnk[1] = false; 
+        G.timeDigits.blink[0] = false;
+        G.timeDigits.blink[1] = false; 
         cli ();
         Timer1.stop ();
         Timer1.restart ();
@@ -1786,8 +1787,8 @@ void settingsMenu (void) {
       }
       // button 1 - falling edge --> start Timer1
       else if (Button[1].falling ()) {
-        G.timeDigits.blnk[0] = true;
-        G.timeDigits.blnk[1] = true;
+        G.timeDigits.blink[0] = true;
+        G.timeDigits.blink[1] = true;
         Nixie.resetBlinking ();
         sysTime = time (NULL);
         set_system_time (sysTime - 1);
@@ -1798,12 +1799,12 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_DAY_E:
       Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.blnk[0] = false;
-      G.dateDigits.blnk[1] = false;
-      G.dateDigits.blnk[2] = false;
-      G.dateDigits.blnk[3] = false;
-      G.dateDigits.blnk[4] = true;
-      G.dateDigits.blnk[5] = true; 
+      G.dateDigits.blink[0] = false;
+      G.dateDigits.blink[1] = false;
+      G.dateDigits.blink[2] = false;
+      G.dateDigits.blink[3] = false;
+      G.dateDigits.blink[4] = true;
+      G.dateDigits.blink[5] = true; 
       G.dateDigits.comma[4] = true;
       G.dateDigits.comma[2] = true;
       nextState   = SET_MONTH_E;
@@ -1831,12 +1832,12 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_MONTH_E:
       Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.blnk[0] = false;
-      G.dateDigits.blnk[1] = false;
-      G.dateDigits.blnk[2] = true;
-      G.dateDigits.blnk[3] = true;
-      G.dateDigits.blnk[4] = false;
-      G.dateDigits.blnk[5] = false; 
+      G.dateDigits.blink[0] = false;
+      G.dateDigits.blink[1] = false;
+      G.dateDigits.blink[2] = true;
+      G.dateDigits.blink[3] = true;
+      G.dateDigits.blink[4] = false;
+      G.dateDigits.blink[5] = false; 
       nextState   = SET_YEAR_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_MONTH;
@@ -1862,12 +1863,12 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_YEAR_E:
       Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.blnk[0] = true;
-      G.dateDigits.blnk[1] = true;
-      G.dateDigits.blnk[2] = false;
-      G.dateDigits.blnk[3] = false;
-      G.dateDigits.blnk[4] = false;
-      G.dateDigits.blnk[5] = false; 
+      G.dateDigits.blink[0] = true;
+      G.dateDigits.blink[1] = true;
+      G.dateDigits.blink[2] = false;
+      G.dateDigits.blink[3] = false;
+      G.dateDigits.blink[4] = false;
+      G.dateDigits.blink[5] = false; 
       nextState   = SET_HOUR_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_YEAR;

@@ -45,11 +45,11 @@ enum NixieNumTubes_e {
  * Array of Nixie tube digit values
  */
 struct NixieDigits_s {
-  uint8_t value[NIXIE_DIGIT_BUF_SIZE] = { 0 };     /* BCD value */
-  bool    blank[NIXIE_DIGIT_BUF_SIZE] = { false }; /* blank digit */
-  bool    comma[NIXIE_DIGIT_BUF_SIZE] = { false }; /* decimal point state */
-  bool    blnk[NIXIE_DIGIT_BUF_SIZE]  = { false }; /* enable blinking */
-  uint8_t numDigits = NIXIE_MAX_NUM_TUBES;         /* number of active digits */
+  uint8_t value[NIXIE_DIGIT_BUF_SIZE] = { 0 };      /* BCD value */
+  bool    blank[NIXIE_DIGIT_BUF_SIZE] = { false };  /* blank digit */
+  bool    comma[NIXIE_DIGIT_BUF_SIZE] = { false };  /* decimal point state */
+  bool    blink[NIXIE_DIGIT_BUF_SIZE] = { false };  /* enable blinking */
+  uint8_t numDigits = NIXIE_MAX_NUM_TUBES;          /* number of active digits */
 };
 
 
@@ -113,6 +113,11 @@ class NixieClass {
      *   enable : enable/disable blinking
      */
     void blinkAll (bool enable);
+    
+    /*
+     * Blink all digits once
+     */
+    void blinkOnce (void);
 
     /*
      * Resets the phase of digit blinking
@@ -203,6 +208,7 @@ class NixieClass {
     bool blinkAllEnabled = false;
     uint32_t blinkTs = 0;
     bool blinkFlag = false;
+    int8_t blinkCount = 0;
     bool slotMachineEnabled[NIXIE_MAX_NUM_TUBES] = { false };
     uint32_t slotMachineTs[NIXIE_MAX_NUM_TUBES] = { 0 };
     uint8_t slotMachineCnt[NIXIE_MAX_NUM_TUBES] = { 0 };

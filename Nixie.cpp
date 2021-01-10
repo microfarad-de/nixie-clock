@@ -111,7 +111,7 @@ void NixieClass::refresh (void) {
     }
 
     commaVal = digits->comma[digit + scrollOffset] || comma[digit] || cppEnabled || slotMachineEnabled[digit];
-    anodeVal = !(blinkFlag && (digits->blnk[digit + scrollOffset] || blinkAllEnabled)) && !digits->blank[digit + scrollOffset];
+    anodeVal = !(blinkFlag && (digits->blink[digit + scrollOffset] || blinkAllEnabled || blinkCount)) && !digits->blank[digit + scrollOffset];
 
     // decimal point shall never be blanked
     // reduce brightness by dimFactor for decimal points without digits
@@ -140,6 +140,7 @@ void NixieClass::refresh (void) {
   // toggle blinking digits
   if (ts - blinkTs > BLINK_PERIOD) {
     blinkFlag = !blinkFlag;
+    if (blinkCount > 0) blinkCount--;
     blinkTs = ts;
   }
 
@@ -182,6 +183,11 @@ void NixieClass::setBrightness (uint8_t brightness) {
 
 void NixieClass::blinkAll (bool enable) {
   blinkAllEnabled = enable;
+}
+
+void NixieClass::blinkOnce (void) {
+  //resetBlinking ();
+  blinkCount = 2;
 }
 
 void NixieClass::resetBlinking (void) {
@@ -259,7 +265,7 @@ void NixieClass::resetDigits (NixieDigits_s *output) {
     output->value[i] = 0;
     output->blank[i] = false;
     output->comma[i] = false;
-    output->blnk[i] = false;
+    output->blink[i] = false;
   }
   output->numDigits = NIXIE_MAX_NUM_TUBES;
 }
