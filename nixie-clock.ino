@@ -243,13 +243,17 @@ struct SettingsLut_t {
 struct G_t {
   public:
     volatile uint32_t timer1Step;                  // minimum adjustment step for Timer1 in µs
-    volatile uint32_t timer1PeriodR;               // remainder of timer1Period / timer1Step
-    volatile uint32_t timer1PeriodLow;             // timerPeriod rounded down to the multiple of timer1Step diveded by TIMER1_DIVIDER (µs)
-    volatile uint32_t timer1PeriodHigh;            // timerPeriod rounded up to the multiple of timer1Step diveded by TIMER1_DIVIDER (µs)
+    volatile uint32_t timer1PeriodRL;              // Timer1 low remainder
+    volatile uint32_t timer1PeriodRH;              // Timer1 high remainder
+    volatile uint32_t timer1PeriodLow;             // Timer1 period rounded down to the multiple of timer1Step (µs)
+    volatile uint32_t timer1PeriodHigh;            // Timer1 period rounded up to the multiple of timer1Step (µs)
     volatile uint32_t timer2Step;                  // minimum adjustment step for Timers in µs
-    volatile uint32_t timer2PeriodR;               // remainder of timer2Period / timer2Step
-    volatile uint32_t timer2PeriodLow;             // timerPeriod rounded down to the multiple of timer2Step diveded by TIMER2_DIVIDER
-    volatile uint32_t timer2PeriodHigh;            // timerPeriod rounded up to the multiple of timer2Step diveded by TIMER2_DIVIDER
+    volatile uint32_t timer2PeriodRL;              // Timer2 low remainder
+    volatile uint32_t timer2PeriodRH;              // Timer2 high remainder
+    volatile uint32_t timer2PeriodLow;             // Timer2 period rounded down to the multiple of timer2Step (µs)
+    volatile uint32_t timer2PeriodHigh;            // Timer2 period rounded up to the multiple of timer2Step (µs)
+    volatile bool timer1UpdateFlag       = true;   // set to true if Timer1 parameters have been updated
+    volatile bool timer2UpdateFlag       = true;   // set to true if Timer2 parameters have been updated
     uint32_t dcfSyncInterval             = 0;      // DCF77 synchronization interval in minutes
     time_t lastDcfSyncTime               = 0;      // stores the time of last successful DCF77 synchronizaiton
     bool manuallyAdjusted                = true;   // prevent crystal drift compensation if clock was manually adjusted  
@@ -585,30 +589,43 @@ void loop() {
  * Triggered once every second by Timer 1
  ***********************************/
 void timer1ISR (void) {
-  static uint32_t fractCount = 0;
+  static uint32_t fractCountL = 0;
+  static uint32_t fractCountH = 0;
   static bool toggleFlag = false;
+  uint8_t add1;
   
 
   system_tick ();
 
   if (Nixie.enabled) Settings.nixieUptime++;
+  
+  if (fractCountH < G.timer1PeriodRH) add1 = 1;
+  else                                add1 = 0;
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCount < G.timer1PeriodR && toggleFlag == false) {
+  if (fractCountL < (G.timer1PeriodRL + add1) && (!toggleFlag || G.timer1UpdateFlag) ) {
     Timer1.setPeriod (G.timer1PeriodHigh);
     toggleFlag = true;
+    G.timer1UpdateFlag = false;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCount >= G.timer1PeriodR && toggleFlag == true) {
+  if (fractCountL >= (G.timer1PeriodRL + add1) && (toggleFlag || G.timer1UpdateFlag) ) {
     Timer1.setPeriod (G.timer1PeriodLow);
     toggleFlag = false;
+    G.timer1UpdateFlag = false;
   }
 
-  fractCount++;
-  if (fractCount >= G.timer1Step * TIMER1_DIVIDER) {
-    fractCount = 0;
+  fractCountL++;
+  if (fractCountL >= G.timer1Step ) {
+    fractCountL = 0;
+    fractCountH++;
+    if (fractCountH >= TIMER1_DIVIDER ) {
+      fractCountH = 0;
+    }
   }
+  
+
 
   G.timer1TickFlag = true;
 
@@ -624,8 +641,10 @@ void timer1ISR (void) {
  * Triggered once every 25ms by Timer 2
  ***********************************/
 void timer2ISR (void) {
-  static uint32_t fractCount = 0;
+  static uint32_t fractCountL = 0;
+  static uint32_t fractCountH = 0;
   static bool toggleFlag = false;
+  uint8_t add1;
     
   G.timer2SecCounter++;
   G.timer2TenthCounter++;
@@ -642,22 +661,31 @@ void timer2ISR (void) {
     G.timer2TenthCounter = 0;
   }
 
+  if (fractCountH < G.timer2PeriodRH) add1 = 1;
+  else                                add1 = 0;
+
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCount < G.timer2PeriodR && toggleFlag == false) {
+  if (fractCountL < (G.timer2PeriodRL + add1) && (!toggleFlag || G.timer2UpdateFlag) ) {
     Timer2.setPeriod (G.timer2PeriodHigh);
     toggleFlag = true;
+    G.timer2UpdateFlag = false;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCount >= G.timer2PeriodR && toggleFlag == true) {
+  if (fractCountL >= (G.timer2PeriodRL + add1) && (toggleFlag || G.timer2UpdateFlag) ) {
     Timer2.setPeriod (G.timer2PeriodLow);
     toggleFlag = false;
+    G.timer2UpdateFlag = false;
   }
 
-  fractCount++;
-  if (fractCount >= G.timer2Step * TIMER2_DIVIDER) {
-    fractCount = 0;
-  }  
+  fractCountL++;
+  if (fractCountL >= G.timer2Step ) {
+    fractCountL = 0;
+    fractCountH++;
+    if (fractCountH >= TIMER2_DIVIDER ) {
+      fractCountH = 0;
+    }
+  }
 }
 /*********/
 
@@ -849,25 +877,41 @@ void timerCalculate (void) {
   if (Settings.timerPeriod > TIMER_MAX_PERIOD) Settings.timerPeriod = TIMER_MAX_PERIOD;
 
   uint32_t timer1Period = Settings.timerPeriod / TIMER1_DIVIDER;
+  uint32_t r, rl ,rh, low, high;
   
+  r                  = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
+  rl                 = r / TIMER1_DIVIDER;
+  rh                 = r % TIMER1_DIVIDER;
+  low                = (Settings.timerPeriod - r) / TIMER1_DIVIDER;
+  high               = low + G.timer1Step;
   cli ();
-  G.timer1PeriodR    = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
-  G.timer1PeriodLow  = (Settings.timerPeriod - G.timer1PeriodR) / TIMER1_DIVIDER;
-  G.timer1PeriodHigh = G.timer1PeriodLow + G.timer1Step;
+  G.timer1PeriodRL   = rl;
+  G.timer1PeriodRH   = rh;
+  G.timer1PeriodLow  = low;
+  G.timer1PeriodHigh = high;
+  G.timer1UpdateFlag = true;
   sei ();
+  
+  r                  = timer1Period % (G.timer2Step * TIMER2_DIVIDER);
+  rl                 = r / TIMER2_DIVIDER;
+  rh                 = r % TIMER2_DIVIDER;
+  low                = (timer1Period - r) / TIMER2_DIVIDER;
+  high               = low + G.timer2Step;
   cli ();
-  G.timer2PeriodR    = timer1Period % (G.timer2Step * TIMER2_DIVIDER);
-  G.timer2PeriodLow  = (timer1Period - G.timer2PeriodR) / TIMER2_DIVIDER;
-  G.timer2PeriodHigh = G.timer2PeriodLow + G.timer2Step;
+  G.timer2PeriodRL   = rl;
+  G.timer2PeriodRH   = rh;
+  G.timer2PeriodLow  = low;
+  G.timer2PeriodHigh = high;
+  G.timer2UpdateFlag = true;
   sei ();
   
 #ifdef DEBUG_VALUES
   Debug.set ( 4, G.timer1PeriodLow);
-  Debug.set ( 5, G.timer1PeriodHigh);
-  Debug.set ( 6, G.timer1PeriodR);
+  Debug.set ( 5, G.timer1PeriodRL);
+  Debug.set ( 6, G.timer1PeriodRH);
   Debug.set ( 7, G.timer2PeriodLow);
-  Debug.set ( 8, G.timer2PeriodHigh);
-  Debug.set ( 9, G.timer2PeriodR);
+  Debug.set ( 8, G.timer2PeriodRL);
+  Debug.set ( 9, G.timer2PeriodRH);
 #endif
 }
 /*********/
