@@ -138,7 +138,7 @@ void NixieClass::refresh (void) {
   }
 
   // toggle blinking digits
-  if (ts - blinkTs > BLINK_PERIOD) {
+  if (ts - blinkTs > BLINK_PERIOD / (1 + (blinkCount > 0))) {
     blinkFlag = !blinkFlag;
     if (blinkCount > 0) blinkCount--;
     blinkTs = ts;

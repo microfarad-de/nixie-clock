@@ -243,13 +243,13 @@ struct SettingsLut_t {
 struct G_t {
   public:
     volatile uint32_t timer1Step;                  // minimum adjustment step for Timer1 in µs
-    volatile uint32_t timer1PeriodRL;              // Timer1 low remainder
-    volatile uint32_t timer1PeriodRH;              // Timer1 high remainder
+    volatile uint32_t timer1PeriodFH;              // Timer1 high fractional part
+    volatile uint32_t timer1PeriodFL;              // Timer1 low fractional part
     volatile uint32_t timer1PeriodLow;             // Timer1 period rounded down to the multiple of timer1Step (µs)
     volatile uint32_t timer1PeriodHigh;            // Timer1 period rounded up to the multiple of timer1Step (µs)
     volatile uint32_t timer2Step;                  // minimum adjustment step for Timers in µs
-    volatile uint32_t timer2PeriodRL;              // Timer2 low remainder
-    volatile uint32_t timer2PeriodRH;              // Timer2 high remainder
+    volatile uint32_t timer2PeriodFH;              // Timer2 high fractional part
+    volatile uint32_t timer2PeriodFL;              // Timer2 low fractional part
     volatile uint32_t timer2PeriodLow;             // Timer2 period rounded down to the multiple of timer2Step (µs)
     volatile uint32_t timer2PeriodHigh;            // Timer2 period rounded up to the multiple of timer2Step (µs)
     volatile bool timer1UpdateFlag       = true;   // set to true if Timer1 parameters have been updated
@@ -589,8 +589,8 @@ void loop() {
  * Triggered once every second by Timer 1
  ***********************************/
 void timer1ISR (void) {
-  static uint32_t fractCountL = 0;
   static uint32_t fractCountH = 0;
+  static uint32_t fractCountL = 0;
   static bool toggleFlag = false;
   uint8_t add1;
   
@@ -599,29 +599,29 @@ void timer1ISR (void) {
 
   if (Nixie.enabled) Settings.nixieUptime++;
   
-  if (fractCountH < G.timer1PeriodRH) add1 = 1;
+  if (fractCountL < G.timer1PeriodFL) add1 = 1;
   else                                add1 = 0;
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCountL < (G.timer1PeriodRL + add1) && (!toggleFlag || G.timer1UpdateFlag) ) {
+  if (fractCountH < (G.timer1PeriodFH + add1) && (!toggleFlag || G.timer1UpdateFlag) ) {
     Timer1.setPeriod (G.timer1PeriodHigh);
     toggleFlag = true;
     G.timer1UpdateFlag = false;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCountL >= (G.timer1PeriodRL + add1) && (toggleFlag || G.timer1UpdateFlag) ) {
+  if (fractCountH >= (G.timer1PeriodFH + add1) && (toggleFlag || G.timer1UpdateFlag) ) {
     Timer1.setPeriod (G.timer1PeriodLow);
     toggleFlag = false;
     G.timer1UpdateFlag = false;
   }
 
-  fractCountL++;
-  if (fractCountL >= G.timer1Step ) {
-    fractCountL = 0;
-    fractCountH++;
-    if (fractCountH >= TIMER1_DIVIDER ) {
-      fractCountH = 0;
+  fractCountH++;
+  if (fractCountH >= G.timer1Step ) {
+    fractCountH = 0;
+    fractCountL++;
+    if (fractCountL >= TIMER1_DIVIDER ) {
+      fractCountL = 0;
     }
   }
   
@@ -641,8 +641,8 @@ void timer1ISR (void) {
  * Triggered once every 25ms by Timer 2
  ***********************************/
 void timer2ISR (void) {
-  static uint32_t fractCountL = 0;
   static uint32_t fractCountH = 0;
+  static uint32_t fractCountL = 0;
   static bool toggleFlag = false;
   uint8_t add1;
     
@@ -661,29 +661,29 @@ void timer2ISR (void) {
     G.timer2TenthCounter = 0;
   }
 
-  if (fractCountH < G.timer2PeriodRH) add1 = 1;
+  if (fractCountL < G.timer2PeriodFL) add1 = 1;
   else                                add1 = 0;
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCountL < (G.timer2PeriodRL + add1) && (!toggleFlag || G.timer2UpdateFlag) ) {
+  if (fractCountH < (G.timer2PeriodFH + add1) && (!toggleFlag || G.timer2UpdateFlag) ) {
     Timer2.setPeriod (G.timer2PeriodHigh);
     toggleFlag = true;
     G.timer2UpdateFlag = false;
   }
 
   // dynamically adjust the timer period to account for fractions of a step
-  if (fractCountL >= (G.timer2PeriodRL + add1) && (toggleFlag || G.timer2UpdateFlag) ) {
+  if (fractCountH >= (G.timer2PeriodFH + add1) && (toggleFlag || G.timer2UpdateFlag) ) {
     Timer2.setPeriod (G.timer2PeriodLow);
     toggleFlag = false;
     G.timer2UpdateFlag = false;
   }
 
-  fractCountL++;
-  if (fractCountL >= G.timer2Step ) {
-    fractCountL = 0;
-    fractCountH++;
-    if (fractCountH >= TIMER2_DIVIDER ) {
-      fractCountH = 0;
+  fractCountH++;
+  if (fractCountH >= G.timer2Step ) {
+    fractCountH = 0;
+    fractCountL++;
+    if (fractCountL >= TIMER2_DIVIDER ) {
+      fractCountL = 0;
     }
   }
 }
@@ -877,29 +877,29 @@ void timerCalculate (void) {
   if (Settings.timerPeriod > TIMER_MAX_PERIOD) Settings.timerPeriod = TIMER_MAX_PERIOD;
 
   uint32_t timer1Period = Settings.timerPeriod / TIMER1_DIVIDER;
-  uint32_t r, rl ,rh, low, high;
+  uint32_t f, fh ,fl, low, high;
   
-  r                  = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
-  rl                 = r / TIMER1_DIVIDER;
-  rh                 = r % TIMER1_DIVIDER;
-  low                = (Settings.timerPeriod - r) / TIMER1_DIVIDER;
+  f                  = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
+  fh                 = f / TIMER1_DIVIDER;
+  fl                 = f % TIMER1_DIVIDER;
+  low                = (Settings.timerPeriod - f) / TIMER1_DIVIDER;
   high               = low + G.timer1Step;
   cli ();
-  G.timer1PeriodRL   = rl;
-  G.timer1PeriodRH   = rh;
+  G.timer1PeriodFH   = fh;
+  G.timer1PeriodFL   = fl;
   G.timer1PeriodLow  = low;
   G.timer1PeriodHigh = high;
   G.timer1UpdateFlag = true;
   sei ();
   
-  r                  = timer1Period % (G.timer2Step * TIMER2_DIVIDER);
-  rl                 = r / TIMER2_DIVIDER;
-  rh                 = r % TIMER2_DIVIDER;
-  low                = (timer1Period - r) / TIMER2_DIVIDER;
+  f                  = timer1Period % (G.timer2Step * TIMER2_DIVIDER);
+  fh                 = f / TIMER2_DIVIDER;
+  fl                 = f % TIMER2_DIVIDER;
+  low                = (timer1Period - f) / TIMER2_DIVIDER;
   high               = low + G.timer2Step;
   cli ();
-  G.timer2PeriodRL   = rl;
-  G.timer2PeriodRH   = rh;
+  G.timer2PeriodFH   = fh;
+  G.timer2PeriodFL   = fl;
   G.timer2PeriodLow  = low;
   G.timer2PeriodHigh = high;
   G.timer2UpdateFlag = true;
@@ -907,11 +907,11 @@ void timerCalculate (void) {
   
 #ifdef DEBUG_VALUES
   Debug.set ( 4, G.timer1PeriodLow);
-  Debug.set ( 5, G.timer1PeriodRL);
-  Debug.set ( 6, G.timer1PeriodRH);
+  Debug.set ( 5, G.timer1PeriodFH);
+  Debug.set ( 6, G.timer1PeriodFL);
   Debug.set ( 7, G.timer2PeriodLow);
-  Debug.set ( 8, G.timer2PeriodRL);
-  Debug.set ( 9, G.timer2PeriodRH);
+  Debug.set ( 8, G.timer2PeriodFH);
+  Debug.set ( 9, G.timer2PeriodFL);
 #endif
 }
 /*********/

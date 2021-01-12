@@ -109,7 +109,6 @@ class CdTimerClass {
     NixieDigits_s digits; 
   
   private:
-    uint32_t alarmTs = 0;
     ChronoClass defaultTm;
     volatile ChronoClass tm;
     volatile bool tickFlag = false; 

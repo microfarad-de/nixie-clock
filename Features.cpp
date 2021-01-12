@@ -28,6 +28,7 @@
 #include "src/MathMf/MathMf.h"
 
 #define TIMER_ALARM_DURATION      (10 * 60000)
+#define TIMER_RESET_TIMEOUT       (10000)
 #define ALARM_ALARM_DURATION      (30 * 60000)
 #define ALARM_SNOOZE_DURATION     (8 * 60000)
 
@@ -170,6 +171,8 @@ void CdTimerClass::initialize (void (*callback)(bool)) {
 }
 
 void CdTimerClass::loopHandler (void) {
+  static uint32_t alarmTs = 0;
+  static uint32_t resetTs = 0;
   uint32_t ts = millis ();
   
   if (tickFlag) { 
@@ -191,6 +194,13 @@ void CdTimerClass::loopHandler (void) {
   }
   
   if (alarm && ts - alarmTs > TIMER_ALARM_DURATION) resetAlarm ();
+  
+  if (running) {
+    resetTs = ts;
+  }
+  else if (active && !running) {
+    if (ts - resetTs > TIMER_RESET_TIMEOUT) reset ();
+  }
 }
 
 void CdTimerClass::tick (void) {
