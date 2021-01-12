@@ -151,9 +151,9 @@
  * the program relies on the exact order of the below definitions
  */
 enum MenuState_e { SHOW_TIME_E, SHOW_DATE_E,    SHOW_WEEK_E, SHOW_ALARM_E, SHOW_TIMER_E, SHOW_STOPWATCH_E, SHOW_SERVICE_E, SHOW_BLANK_E, 
-                   SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,  SET_MIN_E,    SET_SEC_E,    SET_DAY_E,        SET_MONTH_E,    SET_YEAR_E, 
+                   SET_ALARM_E, SET_SETTINGS_E, SET_HOUR_E,  SET_MIN_E,    SET_SEC_E,    SET_DAY_E,        SET_MONTH_E,    SET_YEAR_E,   SET_WEEK_E,
                    SHOW_TIME,   SHOW_DATE,      SHOW_WEEK,   SHOW_ALARM,   SHOW_TIMER,   SHOW_STOPWATCH,   SHOW_SERVICE,   SHOW_BLANK,   
-                   SET_ALARM,   SET_SETTINGS,   SET_HOUR,    SET_MIN,      SET_SEC,      SET_DAY,          SET_MONTH,      SET_YEAR,   };
+                   SET_ALARM,   SET_SETTINGS,   SET_HOUR,    SET_MIN,      SET_SEC,      SET_DAY,          SET_MONTH,      SET_YEAR,     SET_WEEK  };
 
 
 #ifdef DEBUG_VALUES
@@ -203,7 +203,8 @@ struct Settings_t {
   uint32_t settingsResetCode;     // all settings will be reset to default if this value is different than the value of SETTINGS_RESET_CODE
   AlarmEeprom_s alarm;            // alarm clock settings
   int8_t weekStartDay;            // the first day of a calendar week (1 = Monday, 7 = Sunday)
-  uint8_t reserved2[3];           // reserved for future use
+  int8_t calWeekAdjust;           // calendar week compensation value
+  uint8_t reserved2[2];           // reserved for future use
 } Settings;
 
 
@@ -234,7 +235,7 @@ struct SettingsLut_t {
   { (int8_t *)&Settings.dcfSignalIndicator,     5, 2, false, true,  true }, //  - signal indicator
   { (int8_t *)&Settings.dcfSyncHour,            5, 3,     0,   23,     3 }, //  - sync hour
   { (int8_t *)&Settings.clockDriftCorrect,      6, 1,   -99,   99,     0 }, // manual clock drift correction
-  { (int8_t *)&Settings.weekStartDay,           6, 2,     1,    7,     7 }  // start day of the week (1 = Monday, 7 = Sunday)
+  { (int8_t *)&Settings.weekStartDay,           6, 2,     1,    7,     1 }  // start day of the week (1 = Monday, 7 = Sunday)
 };
 
 /*
@@ -306,6 +307,7 @@ void updateDigits (void);
 void adcRead (void);
 void powerSave (void);
 void reorderMenu (int8_t);
+uint8_t calendarWeek (void);
 void settingsMenu (void);
 
 
@@ -377,6 +379,7 @@ void setup() {
     Settings.alarm.hour = 0;
     Settings.alarm.mode = ALARM_OFF;
     Settings.alarm.lastMode = ALARM_OFF;
+    Settings.calWeekAdjust = 0;
     for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
       *SettingsLut[i].value = SettingsLut[i].defaultVal;
       Settings.settingsResetCode = SETTINGS_RESET_CODE;
@@ -1153,7 +1156,29 @@ void reorderMenu (int8_t menuIdx) {
 }
 /*********/
 
+/***********************************
+ * Code snipped for calculating the calendar week
+ ***********************************/
+#define CALENDAR_WEEK() \
+   (int8_t)week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
+/*********/
 
+/***********************************
+ * Calculate the current calendar week
+ ***********************************/
+uint8_t calendarWeek (void) {
+  int8_t week = CALENDAR_WEEK();
+    while (week < 1) {
+    Settings.calWeekAdjust++;
+    week = CALENDAR_WEEK();
+  }
+  while (week > 53) {
+    Settings.calWeekAdjust--;
+    week = CALENDAR_WEEK();
+  }
+  return (uint8_t)week;
+}
+/*********/
 
 
 #define SCROLL_LUT_SIZE  18    // digit scrolling lookup dable size
@@ -1385,7 +1410,7 @@ void settingsMenu (void) {
     case SHOW_WEEK_E: 
       Nixie.resetDigits (&valueDigits);
       Nixie.setDigits (&valueDigits); 
-      valU8 = week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + 1;
+      valU8 = calendarWeek ();
       valueDigits.value[0] = dec2bcdLow (valU8);
       valueDigits.value[1] = dec2bcdHigh (valU8);
       valueDigits.blank[2] = true;
@@ -1393,7 +1418,7 @@ void settingsMenu (void) {
       valueDigits.value[4] = (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
       valueDigits.blank[5] = true;
       nextState   = SHOW_TIME_E;
-      returnState = SHOW_WEEK_E;
+      returnState = SET_WEEK_E;
       G.menuState = SHOW_WEEK; 
     case SHOW_WEEK:
       // do nothing
@@ -1912,7 +1937,7 @@ void settingsMenu (void) {
       G.dateDigits.blink[3] = false;
       G.dateDigits.blink[4] = false;
       G.dateDigits.blink[5] = false; 
-      nextState   = SET_HOUR_E;
+      nextState   = SET_WEEK_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_YEAR;
     case SET_YEAR:
@@ -1933,6 +1958,47 @@ void settingsMenu (void) {
         }   
       }
       break;
+      
+    /*################################################################################*/
+    case SET_WEEK_E:
+      Nixie.resetDigits (&valueDigits);
+      Nixie.setDigits (&valueDigits); 
+      valU8 = calendarWeek ();
+      valueDigits.blink[0] = true;
+      valueDigits.blink[1] = true;
+      valueDigits.value[0] = dec2bcdLow (valU8);
+      valueDigits.value[1] = dec2bcdHigh (valU8);
+      valueDigits.blank[2] = true;
+      valueDigits.blank[3] = true;
+      valueDigits.value[4] = (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
+      valueDigits.blank[5] = true;
+      nextState   = SET_HOUR_E;
+      returnState = SHOW_WEEK_E;
+      G.menuState = SET_WEEK;
+    case SET_WEEK:
+      // button 1 - pressed --> increase calendar week
+      if (Button[1].pressed) {
+        Nixie.resetBlinking();
+        if (ts - scrollTs >= scrollDelay) {
+          Settings.calWeekAdjust++;
+          valU8 = calendarWeek ();
+          valueDigits.value[0] = dec2bcdLow (valU8);
+          valueDigits.value[1] = dec2bcdHigh (valU8);
+          scrollTs = ts;
+        }   
+      }
+      // button 2 - pressed --> decrease calendar week
+      else if (Button[2].pressed) {
+        Nixie.resetBlinking();
+        if (ts - scrollTs >= scrollDelay) {
+          Settings.calWeekAdjust--;
+          valU8 = calendarWeek ();
+          valueDigits.value[0] = dec2bcdLow (valU8);
+          valueDigits.value[1] = dec2bcdHigh (valU8);
+          scrollTs = ts;
+        }   
+      }
+      break;
 
     /*################################################################################*/
     default:
@@ -1942,3 +2008,7 @@ void settingsMenu (void) {
   }
    
 }
+/*********/
+
+
+
