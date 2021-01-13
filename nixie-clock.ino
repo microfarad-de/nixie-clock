@@ -294,6 +294,7 @@ StopwatchClass Stopwatch;      // stopwatch object
 /***********************************
  * Function prototypes
  ***********************************/
+void eepromWriteSettings (void);
 void timer1ISR (void);
 void timer2ISR (void);
 void timerCallback (bool);
@@ -366,6 +367,7 @@ void setup() {
   if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_CODE) {
     Settings.nixieUptime          = NIXIE_UPTIME_RESET_VALUE;
     Settings.nixieUptimeResetCode = NIXIE_UPTIME_RESET_CODE;
+    eepromWriteSettings ();
     PRINTLN ("[setup] nixieUptime initialized");
   }
 
@@ -381,8 +383,9 @@ void setup() {
     for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
       *SettingsLut[i].value = SettingsLut[i].defaultVal;
       Settings.settingsResetCode = SETTINGS_RESET_CODE;
-      PRINTLN ("[setup] settings initialized");
     }
+    eepromWriteSettings ();
+    PRINTLN ("[setup] settings initialized");
   }
   
   PRINTLN ("[setup] other:");
@@ -524,8 +527,7 @@ void loop() {
   // write-back system settings to EEPROM every night
   if (hour != lastHour && hour == 1 && G.menuState != SET_HOUR) {
       Nixie.blank ();
-      eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
-      Brightness.eepromWrite ();
+      eepromWriteSettings ();
       PRINTLN ("[loop] >EEPROM");   
   }
 
@@ -582,6 +584,14 @@ void loop() {
 /*********/
 
 
+
+/***********************************
+ * Write settings back to EEPROM 
+ ***********************************/
+void eepromWriteSettings (void) {
+  eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
+  Brightness.eepromWrite ();
+}
 
 
 
@@ -1027,8 +1037,7 @@ void powerSave (void) {
   uint8_t i;
 
   // write-back system settings to EEPROM
-  eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
-  Brightness.eepromWrite ();
+  eepromWriteSettings ();
   
   analogReference (INTERNAL);       // set ADC reference to internal 1.1V source (required for measuring power supply voltage)
   for (i = 0; i < 100 && voltage < voltageThreshold; i++) voltage = analogRead (VOLTAGE_APIN); // stabilize voltage reading
