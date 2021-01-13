@@ -83,9 +83,9 @@
 
 
 // reset the Nixie tube uptime to this value in seconds upon booting for the very first time
-#define NIXIE_UPTIME_INIT_VAL  ((uint32_t)0*3600)
+#define NIXIE_UPTIME_RESET_VALUE  ((uint32_t)0*3600)
   
-// change the following value to force an uptime reset
+// if the folllowing value is changed, the Nixie tube uptime will be reset to NIXIE_UPTIME_RESET_VALUE
 #define NIXIE_UPTIME_RESET_CODE 0xDEADBEEF    
 
 // upon the absence of this string in EEPROM all the settings will be reset to default
@@ -181,30 +181,30 @@ class DebugClass {
  * Structure that holds the settings to be stored in EEPROM
  */
 struct Settings_t {
-  volatile uint32_t timerPeriod = TIMER_DEFAULT_PERIOD;  // virtual period of Timer1/Timer2 (equivalent to 1 second)
+  uint32_t timerPeriod;           // virtual period of Timer1/Timer2 (equivalent to 1 second)
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
   uint32_t nixieUptimeResetCode;  // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
-  bool dcfSyncEnabled;            // enables DCF77 synchronization feature
-  bool dcfSignalIndicator;        // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
-  uint8_t dcfSyncHour;            // hour of day when DCF77 sync shall start
-  uint8_t blankScreenMode;        // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
-  uint8_t blankScreenStartHr;     // start hour for disabling the display
-  uint8_t blankScreenFinishHr;    // finish hour for disabling the display
-  uint8_t cathodePoisonPrevent;   // enables cathode poisoning prevention measure by cycling through all digits (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
-  uint8_t cppStartHr;             // start hour for the cathode poisoning prevention measure
-  int8_t clockDriftCorrect;       // manual clock drift correction
-  uint8_t reserved0;              // reserved for future use
-  bool brightnessAutoAdjust;      // enables the brightness auto-adjustment feature
-  bool brightnessBoost;           // enables the brightness boosting feature
-  uint8_t blankScreenMode2;       // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
-  uint8_t blankScreenStartHr2;    // start hour for disabling the display (second profile)
-  uint8_t blankScreenFinishHr2;   // finish hour for disabling the display (second profile)
-  uint8_t reserved1[1];           // reserved for future use
+  bool     dcfSyncEnabled;        // enables DCF77 synchronization feature
+  bool     dcfSignalIndicator;    // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
+  uint8_t  dcfSyncHour;           // hour of day when DCF77 sync shall start
+  uint8_t  blankScreenMode;       // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
+  uint8_t  blankScreenStartHr;    // start hour for disabling the display
+  uint8_t  blankScreenFinishHr;   // finish hour for disabling the display
+  uint8_t  cathodePoisonPrevent;  // enables cathode poisoning prevention measure by cycling through all digits (1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
+  uint8_t  cppStartHr;            // start hour for the cathode poisoning prevention measure
+  int8_t   clockDriftCorrect;     // manual clock drift correction
+  uint8_t  reserved0;             // reserved for future use
+  bool     brightnessAutoAdjust;  // enables the brightness auto-adjustment feature
+  bool     brightnessBoost;       // enables the brightness boosting feature
+  uint8_t  blankScreenMode2;      // turn-off display during a time interval in order to reduce tube wear (second profile) (1 = every day, 2 = on weekdays, 3 = on weekends)
+  uint8_t  blankScreenStartHr2;   // start hour for disabling the display (second profile)
+  uint8_t  blankScreenFinishHr2;  // finish hour for disabling the display (second profile)
+  uint8_t  reserved1[1];          // reserved for future use
   uint32_t settingsResetCode;     // all settings will be reset to default if this value is different than the value of SETTINGS_RESET_CODE
   AlarmEeprom_s alarm;            // alarm clock settings
-  int8_t weekStartDay;            // the first day of a calendar week (1 = Monday, 7 = Sunday)
-  int8_t calWeekAdjust;           // calendar week compensation value
-  uint8_t reserved2[2];           // reserved for future use
+  int8_t   weekStartDay;          // the first day of a calendar week (1 = Monday, 7 = Sunday)
+  int8_t   calWeekAdjust;         // calendar week compensation value
+  uint8_t  reserved2[2];          // reserved for future use
 } Settings;
 
 
@@ -212,7 +212,7 @@ struct Settings_t {
  * Lookup table that maps the individual system settings 
  * to their ranges and IDs  
  */
-struct SettingsLut_t {
+const struct SettingsLut_t {
   int8_t *value;     // pointer to the value variable
   uint8_t idDigit1;  // most significant digit to be displayed for the settings ID
   uint8_t idDigit0;  // least significant digit to be dispalyed for the settings ID
@@ -242,44 +242,41 @@ struct SettingsLut_t {
  * Global variables
  */
 struct G_t {
-  public:
-    volatile uint32_t timer1Step;                  // minimum adjustment step for Timer1 in µs
-    volatile uint32_t timer1PeriodFH;              // Timer1 high fractional part
-    volatile uint32_t timer1PeriodFL;              // Timer1 low fractional part
-    volatile uint32_t timer1PeriodLow;             // Timer1 period rounded down to the multiple of timer1Step (µs)
-    volatile uint32_t timer1PeriodHigh;            // Timer1 period rounded up to the multiple of timer1Step (µs)
-    volatile uint32_t timer2Step;                  // minimum adjustment step for Timers in µs
-    volatile uint32_t timer2PeriodFH;              // Timer2 high fractional part
-    volatile uint32_t timer2PeriodFL;              // Timer2 low fractional part
-    volatile uint32_t timer2PeriodLow;             // Timer2 period rounded down to the multiple of timer2Step (µs)
-    volatile uint32_t timer2PeriodHigh;            // Timer2 period rounded up to the multiple of timer2Step (µs)
-    volatile bool timer1UpdateFlag       = true;   // set to true if Timer1 parameters have been updated
-    volatile bool timer2UpdateFlag       = true;   // set to true if Timer2 parameters have been updated
-    uint32_t dcfSyncInterval             = 0;      // DCF77 synchronization interval in minutes
-    time_t lastDcfSyncTime               = 0;      // stores the time of last successful DCF77 synchronizaiton
-    bool manuallyAdjusted                = true;   // prevent crystal drift compensation if clock was manually adjusted  
-    bool dcfSyncActive                   = true;   // enable/disable DCF77 synchronization
-    bool cppEffectEnabled                = false;  // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
-    volatile uint32_t secTickMsStamp     = 0;      // millis() at the last second tick, used for accurate crystal drift compensation
-    volatile bool timer1TickFlag         = false;  // flag is set every second by the Timer1 ISR 
-    volatile uint8_t timer2SecCounter    = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
-    volatile uint8_t timer2TenthCounter  = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
+  uint32_t timer1Step;                          // minimum adjustment step for Timer1 in µs
+  uint32_t timer1PeriodFH;                      // Timer1 high fractional part
+  uint32_t timer1PeriodFL;                      // Timer1 low fractional part
+  uint32_t timer1PeriodLow;                     // Timer1 period rounded down to the multiple of timer1Step (µs)
+  uint32_t timer1PeriodHigh;                    // Timer1 period rounded up to the multiple of timer1Step (µs)
+  uint32_t timer2Step;                          // minimum adjustment step for Timers in µs
+  uint32_t timer2PeriodFH;                      // Timer2 high fractional part
+  uint32_t timer2PeriodFL;                      // Timer2 low fractional part
+  uint32_t timer2PeriodLow;                     // Timer2 period rounded down to the multiple of timer2Step (µs)
+  uint32_t timer2PeriodHigh;                    // Timer2 period rounded up to the multiple of timer2Step (µs)
+  volatile bool timer1UpdateFlag = true;        // set to true if Timer1 parameters have been updated
+  volatile bool timer2UpdateFlag = true;        // set to true if Timer2 parameters have been updated
+  uint32_t dcfSyncInterval    = 0;              // DCF77 synchronization interval in minutes
+  time_t   lastDcfSyncTime    = 0;              // stores the time of last successful DCF77 synchronizaiton
+  bool     manuallyAdjusted   = true;           // prevent crystal drift compensation if clock was manually adjusted  
+  bool     dcfSyncActive      = true;           // enable/disable DCF77 synchronization
+  bool     cppEffectEnabled   = false;          // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
+  uint32_t secTickMsStamp     = 0;              // millis() at the last second tick, used for accurate crystal drift compensation
+  volatile bool    timer1TickFlag     = false;  // flag is set every second by the Timer1 ISR 
+  volatile uint8_t timer2SecCounter   = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
+  volatile uint8_t timer2TenthCounter = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
+  time_t   systemTime                 = 0;      // current system time
+  tm       *systemTm                  = NULL;   // pointer to the current system time structure
+  NixieDigits_s timeDigits;                     // stores the Nixie display digit values of the current time
+  NixieDigits_s dateDigits;                     // stores the Nixie display digit values of the current date 
+  MenuState_e   menuState             = SHOW_TIME_E;  // state of the menu navigation state machine 
 #ifdef SERIAL_DEBUG
-    volatile uint8_t printTickCount      = 0;      // incremented by the Timer1 ISR every second
+  volatile uint8_t printTickCount     = 0;     // incremented by the Timer1 ISR every second
 #endif
-    time_t systemTime                    = 0;      // current system time
-    tm    *systemTm                      = NULL;   // pointer to the current system time structure
-    NixieDigits_s timeDigits;                      // stores the Nixie display digit values of the current time
-    NixieDigits_s dateDigits;                      // stores the Nixie display digit values of the current date 
-    MenuState_e menuState = SHOW_TIME_E;           // state of the menu navigation state machine 
 
-    // analog pins as an array
-    uint8_t analogPin[NUM_APINS] = 
-      { BUTTON0_APIN, BUTTON1_APIN, BUTTON2_APIN, LIGHTSENS_APIN, EXTPWR_APIN };       
+  // analog pins as an array
+  const uint8_t analogPin[NUM_APINS] = { BUTTON0_APIN, BUTTON1_APIN, BUTTON2_APIN, LIGHTSENS_APIN, EXTPWR_APIN };       
 
-    // dynamically defines the order of the menu items
-    MenuState_e menuOrder[MENU_ORDER_LIST_SIZE] = 
-       { SHOW_STOPWATCH_E, SHOW_TIMER_E, SHOW_SERVICE_E }; 
+  // dynamically defines the order of the menu items
+  MenuState_e menuOrder[MENU_ORDER_LIST_SIZE] = { SHOW_STOPWATCH_E, SHOW_TIMER_E, SHOW_SERVICE_E }; 
 } G;
 
 /*
@@ -367,7 +364,7 @@ void setup() {
 
   // reset nixie tube uptime on first-time boot
   if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_CODE) {
-    Settings.nixieUptime = NIXIE_UPTIME_INIT_VAL;
+    Settings.nixieUptime          = NIXIE_UPTIME_RESET_VALUE;
     Settings.nixieUptimeResetCode = NIXIE_UPTIME_RESET_CODE;
     PRINTLN ("[setup] nixieUptime initialized");
   }
@@ -375,11 +372,12 @@ void setup() {
   // reset all settings on first-time boot
   if (Settings.settingsResetCode != SETTINGS_RESET_CODE) {
     Brightness.initializeLut ();
-    Settings.alarm.minute = 0;
-    Settings.alarm.hour = 0;
-    Settings.alarm.mode = ALARM_OFF;
-    Settings.alarm.lastMode = ALARM_OFF;
-    Settings.calWeekAdjust = 0;
+    Settings.alarm.hour     = 06;
+    Settings.alarm.minute   = 45;
+    Settings.alarm.mode     = ALARM_OFF;
+    Settings.alarm.lastMode = ALARM_WEEKDAYS;
+    Settings.timerPeriod    = TIMER_DEFAULT_PERIOD;
+    Settings.calWeekAdjust  = 0;
     for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
       *SettingsLut[i].value = SettingsLut[i].defaultVal;
       Settings.settingsResetCode = SETTINGS_RESET_CODE;
@@ -588,7 +586,7 @@ void loop() {
 
 
 /***********************************
- * Timer ISR
+ * Timer1 ISR
  * Triggered once every second by Timer 1
  ***********************************/
 void timer1ISR (void) {
@@ -880,7 +878,7 @@ void timerCalculate (void) {
   if (Settings.timerPeriod > TIMER_MAX_PERIOD) Settings.timerPeriod = TIMER_MAX_PERIOD;
 
   uint32_t timer1Period = Settings.timerPeriod / TIMER1_DIVIDER;
-  uint32_t f, fh ,fl, low, high;
+  volatile uint32_t f, fh ,fl, low, high;
   
   f                  = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
   fh                 = f / TIMER1_DIVIDER;

@@ -65,21 +65,21 @@ extern BuzzerClass Buzzer;
  */
 class ChronoClass {
   public:
-    void increment10th (void) volatile;
-    void increment10sec (void) volatile;
-    bool decrement10sec (void) volatile;
-    void incrementMin (void) volatile;
-    bool decrementMin (void) volatile;
-    void incrementSec (void) volatile;
-    bool decrementSec (void) volatile;
-    void reset (void) volatile;
-    void copy (volatile ChronoClass *) volatile;
-    void roundup (void) volatile;
+    void increment10th (void);
+    void increment10sec (void);
+    bool decrement10sec (void);
+    void incrementMin (void);
+    bool decrementMin (void);
+    void incrementSec (void);
+    bool decrementSec (void);
+    void reset (void);
+    void copy (ChronoClass *);
+    void roundup (void);
 
-    volatile int8_t tenth = 0;
-    volatile int8_t second = 0;
-    volatile int8_t minute = 0;
-    volatile int8_t hour = 0;
+    int8_t tenth = 0;
+    int8_t second = 0;
+    int8_t minute = 0;
+    int8_t hour = 0;
     
   private:
 };
@@ -103,14 +103,14 @@ class CdTimerClass {
     void resetAlarm (void);
     void reset (void);
     
-    volatile bool active = false;
-    volatile bool running = false;
-    volatile bool alarm = false;
+    bool active = false;
+    bool running = false;
+    bool alarm = false;
     NixieDigits_s digits; 
   
   private:
     ChronoClass defaultTm;
-    volatile ChronoClass tm;
+    ChronoClass tm;
     volatile bool tickFlag = false; 
     void (*callback)(bool) = NULL;
 };
@@ -130,13 +130,13 @@ class StopwatchClass {
     void displayRefresh (void);
     void reset (void);
 
-    volatile bool active = false;
-    volatile bool running = false;
-    volatile bool paused = false;
+    bool active = false;
+    bool running = false;
+    bool paused = false;
     NixieDigits_s digits;
     
   private:
-    volatile ChronoClass tm;
+    ChronoClass tm;
     volatile bool tickFlag = false;
     void (*callback)(bool) = NULL;
 };

@@ -88,20 +88,20 @@ void BuzzerClass::stop (void) {
 
 /*#######################################################################################*/
 
-void ChronoClass::increment10th (void) volatile {
+void ChronoClass::increment10th (void) {
   tenth++;
   if (tenth > 9) tenth = 0, second++;
   if (second > 59) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
 }
 
-void ChronoClass::increment10sec (void) volatile {
+void ChronoClass::increment10sec (void) {
   second += 10;
   if (second > 59) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
 }
 
-bool ChronoClass::decrement10sec (void) volatile {
+bool ChronoClass::decrement10sec (void) {
   second -= 10;
   if (second < 0) second = 59, minute--;
   if (minute < 0) minute = 59, hour--;
@@ -110,12 +110,12 @@ bool ChronoClass::decrement10sec (void) volatile {
   return false;
 }
 
-void ChronoClass::incrementMin (void) volatile {
+void ChronoClass::incrementMin (void) {
   minute++;
   if (minute > 59) minute = 0, hour++;
 }
 
-bool ChronoClass::decrementMin (void) volatile {
+bool ChronoClass::decrementMin (void) {
   minute--;
   if (minute < 0) minute = 59, hour--;
   if (hour < 0) hour = 0, minute = 0, second = 0;
@@ -123,13 +123,13 @@ bool ChronoClass::decrementMin (void) volatile {
   return false;
 }
 
-void ChronoClass::incrementSec (void) volatile {
+void ChronoClass::incrementSec (void) {
   second++;
   if (second > 59) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
 }
 
-bool ChronoClass::decrementSec (void) volatile {
+bool ChronoClass::decrementSec (void) {
   second--;
   if (second < 0) second = 59, minute--;
   if (minute < 0) minute = 59, hour--;
@@ -138,21 +138,21 @@ bool ChronoClass::decrementSec (void) volatile {
   return false;
 }
 
-void ChronoClass::reset (void) volatile {
+void ChronoClass::reset (void) {
   tenth = 0;
   second = 0;
   minute = 0;
   hour = 0;
 }
 
-void ChronoClass::copy (volatile ChronoClass *tm) volatile {
+void ChronoClass::copy (ChronoClass *tm) {
   tenth = tm->tenth;
   second = tm->second;
   minute = tm->minute;
   hour = tm->hour;
 }
 
-void ChronoClass::roundup (void) volatile {
+void ChronoClass::roundup (void) {
   tenth = 0;
   if (second !=0) second = 0, minute++;
   if (minute > 59) minute = 0, hour++;
