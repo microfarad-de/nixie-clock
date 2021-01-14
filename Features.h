@@ -30,6 +30,7 @@
 #include <Arduino.h>
 #include "Nixie.h"
 
+
 /*
  * Buzzer control class
  */
@@ -106,7 +107,7 @@ class CdTimerClass {
     bool active = false;
     bool running = false;
     bool alarm = false;
-    NixieDigits_s digits; 
+    NixieDigit_s digits[NIXIE_NUM_TUBES]; 
   
   private:
     ChronoClass defaultTm;
@@ -133,7 +134,7 @@ class StopwatchClass {
     bool active = false;
     bool running = false;
     bool paused = false;
-    NixieDigits_s digits;
+    NixieDigit_s digits[NIXIE_NUM_TUBES];
     
   private:
     ChronoClass tm;
@@ -183,7 +184,7 @@ class AlarmClass {
 
     bool alarm = false;
     bool snoozing = false;
-    NixieDigits_s digits;
+    NixieDigit_s digits[NIXIE_NUM_TUBES];
     AlarmEeprom_s *settings = NULL;
 
   private:

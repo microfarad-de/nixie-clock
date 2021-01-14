@@ -60,7 +60,6 @@ void BuzzerClass::loopHandler (void) {
     index++;
     if (melody[index] < 0) index = 0;
   }
-  
 }
 
 void BuzzerClass::playMelody1 (void) {
@@ -234,12 +233,12 @@ void CdTimerClass::minuteDecrease (void) {
 }
 
 void CdTimerClass::displayRefresh (void) {
-  digits.value[0] = dec2bcdLow  (tm.second);
-  digits.value[1] = dec2bcdHigh (tm.second);
-  digits.value[2] = dec2bcdLow  (tm.minute);
-  digits.value[3] = dec2bcdHigh (tm.minute);
-  digits.value[4] = dec2bcdLow  (tm.hour);
-  digits.value[5] = dec2bcdHigh (tm.hour); 
+  digits[0].value = dec2bcdLow  (tm.second);
+  digits[1].value = dec2bcdHigh (tm.second);
+  digits[2].value = dec2bcdLow  (tm.minute);
+  digits[3].value = dec2bcdHigh (tm.minute);
+  digits[4].value = dec2bcdLow  (tm.hour);
+  digits[5].value = dec2bcdHigh (tm.hour); 
 }
 
 void CdTimerClass::start (void) {
@@ -270,7 +269,7 @@ void CdTimerClass::reset (void) {
   resetAlarm ();
   active = false;
   running = false;
-  Nixie.resetDigits (&digits);
+  Nixie.resetDigits (digits, NIXIE_NUM_TUBES);
   callback (false);
   defaultTm.roundup ();
   tm.copy (&defaultTm);
@@ -319,24 +318,24 @@ void StopwatchClass::pause (bool enable) {
   if (enable && running) {
     paused = true;
     Nixie.resetBlinking ();
-    for (i = 0; i < 6; i++) digits.blink[i] = true;  
+    for (i = 0; i < NIXIE_NUM_TUBES; i++) digits[i].blink = true;  
   }
   else {
     paused = false;
     displayRefresh ();
-    for (i = 0; i < 6; i++) digits.blink[i] = false;
+    for (i = 0; i < NIXIE_NUM_TUBES; i++) digits[i].blink = false;
   }
   
 }
 
 void StopwatchClass::displayRefresh (void) {
-  digits.value[0] = 0;
-  digits.value[1] = dec2bcdLow  (tm.tenth);
-  digits.value[2] = dec2bcdLow  (tm.second);
-  digits.value[3] = dec2bcdHigh (tm.second);
-  digits.value[4] = dec2bcdLow  (tm.minute);
-  digits.value[5] = dec2bcdHigh (tm.minute); 
-  if (tm.hour > 0) digits.comma[4] = true;
+  digits[0].value = 0;
+  digits[1].value = dec2bcdLow  (tm.tenth);
+  digits[2].value = dec2bcdLow  (tm.second);
+  digits[3].value = dec2bcdHigh (tm.second);
+  digits[4].value = dec2bcdLow  (tm.minute);
+  digits[5].value = dec2bcdHigh (tm.minute); 
+  if (tm.hour > 0) digits[4].comma = true;
 }
 
 void StopwatchClass::reset (void) {
@@ -344,8 +343,8 @@ void StopwatchClass::reset (void) {
   active = false;
   running = false;
   paused = false;
-  Nixie.resetDigits (&digits);
-  for (i = 0; i < 6; i++) digits.blink[i] = false;
+  Nixie.resetDigits (digits, NIXIE_NUM_TUBES);
+  for (i = 0; i < NIXIE_NUM_TUBES; i++) digits[i].blink = false;
   tm.reset ();
   displayRefresh ();
   callback (false);
@@ -481,14 +480,14 @@ void AlarmClass::hourDecrease (void) {
 }
 
 void AlarmClass::displayRefresh (void) {
-  for (uint8_t i = 0; i < 6; i++) digits.blank[i] = false;
-  digits.value[0] = (uint8_t)settings->mode;
+  for (uint8_t i = 0; i < NIXIE_NUM_TUBES; i++) digits[i].blank = false;
+  digits[0].value = (uint8_t)settings->mode;
   Nixie.comma[0] = (bool)settings->mode;
-  digits.blank[1] = true;
-  digits.value[2] = dec2bcdLow  (settings->minute);
-  digits.value[3] = dec2bcdHigh (settings->minute);
-  digits.value[4] = dec2bcdLow  (settings->hour);
-  digits.value[5] = dec2bcdHigh (settings->hour);   
+  digits[1].blank = true;
+  digits[2].value = dec2bcdLow  (settings->minute);
+  digits[3].value = dec2bcdHigh (settings->minute);
+  digits[4].value = dec2bcdLow  (settings->hour);
+  digits[5].value = dec2bcdHigh (settings->hour);   
 }
 
 

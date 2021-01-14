@@ -35,17 +35,17 @@
 #define SCROLL_PERIOD_2     300000
 #define SLOT_MACHINE_PERIOD 40000
 #define CPP_PERIOD          200000
+#define NUM_BCD_PINS        4
 
 
 NixieClass Nixie;
 
 
-void NixieClass::initialize (NixieNumTubes_e numTubes,
-        uint8_t anodePin0, uint8_t anodePin1, uint8_t anodePin2, uint8_t anodePin3, uint8_t anodePin4, uint8_t anodePin5,
-        uint8_t bcdPin0, uint8_t bcdPin1, uint8_t bcdPin2, uint8_t bcdPin3, uint8_t commaPin, NixieDigits_s *digits, uint8_t brightness) {
+void NixieClass::initialize ( uint8_t anodePin0, uint8_t anodePin1, uint8_t anodePin2, uint8_t anodePin3, 
+        uint8_t anodePin4, uint8_t anodePin5, uint8_t bcdPin0, uint8_t bcdPin1, uint8_t bcdPin2, 
+        uint8_t bcdPin3, uint8_t commaPin, NixieDigit_s *digits, uint8_t numDigits, uint8_t brightness) {
 
   uint8_t i;
-  this->numTubes = numTubes;
   this->anodePin[0] = anodePin0;
   this->anodePin[1] = anodePin1;
   this->anodePin[2] = anodePin2;
@@ -58,14 +58,15 @@ void NixieClass::initialize (NixieNumTubes_e numTubes,
   this->bcdPin[3] = bcdPin3;
   this->commaPin = commaPin;
   this->digits = digits;
+  this->numDigits = numDigits;
   this->digitOnDuration = map (brightness, 0, 255, 0, MAX_ON_DURATION);
 
   // initialize output pins
-  for (i = 0; i < numTubes; i++) {
+  for (i = 0; i < NIXIE_NUM_TUBES; i++) {
     pinMode (anodePin[i], OUTPUT);
     digitalWrite (anodePin[i], LOW);
   }
-  for (i = 0; i < 4; i++) {
+  for (i = 0; i < NUM_BCD_PINS; i++) {
     pinMode (bcdPin[i], OUTPUT);
     digitalWrite (bcdPin[i], LOW);
   }
@@ -74,8 +75,9 @@ void NixieClass::initialize (NixieNumTubes_e numTubes,
 }
 
 
-void NixieClass::setDigits (NixieDigits_s *digits) {
+void NixieClass::setDigits (NixieDigit_s *digits, uint8_t numDigits) {
   this->digits = digits;
+  this->numDigits = numDigits;
 }
 
 void NixieClass::refresh (void) {
@@ -89,7 +91,7 @@ void NixieClass::refresh (void) {
     wdt_reset ();
     // keep rotating digits to avoid delayed "Slot Machine" effect
     digit++;
-    if (digit >= numTubes) digit = 0;   
+    if (digit >= NIXIE_NUM_TUBES) digit = 0;   
   }
   
   // display multiplexing by switching digits
@@ -100,9 +102,9 @@ void NixieClass::refresh (void) {
     digitalWrite (anodePin[digit], LOW); 
     
     digit++;
-    if (digit >= numTubes) digit = 0;
+    if (digit >= NIXIE_NUM_TUBES) digit = 0;
     
-    bcdVal = digits->value[digit + scrollOffset];
+    bcdVal = digits[digit + scrollOffset].value;
 
     if (slotMachineEnabled[digit] || cppEnabled) {
       // produce "Slot Machine" or CPP effect 
@@ -110,8 +112,8 @@ void NixieClass::refresh (void) {
       while (bcdVal > 9) bcdVal -= 10; 
     }
 
-    commaVal = digits->comma[digit + scrollOffset] || comma[digit] || cppEnabled || slotMachineEnabled[digit];
-    anodeVal = !(blinkFlag && (digits->blink[digit + scrollOffset] || blinkAllEnabled || blinkCount)) && !digits->blank[digit + scrollOffset];
+    commaVal = digits[digit + scrollOffset].comma || comma[digit] || cppEnabled || slotMachineEnabled[digit];
+    anodeVal = !(blinkFlag && (digits[digit + scrollOffset].blink || blinkAllEnabled || blinkCount)) && !digits[digit + scrollOffset].blank;
 
     // decimal point shall never be blanked
     // reduce brightness by dimFactor for decimal points without digits
@@ -168,7 +170,7 @@ void NixieClass::refresh (void) {
 
   // scroll through the digits buffer
   if (scrollOffset > 0) {
-    if ( (ts - scrollTs > SCROLL_PERIOD_2 && scrollOffset < digits->numDigits - numTubes) || 
+    if ( (ts - scrollTs > SCROLL_PERIOD_2 && scrollOffset < numDigits - NIXIE_NUM_TUBES) || 
          (ts - scrollTs > SCROLL_PERIOD_1) ) {
       scrollOffset--;
       scrollTs = ts;
@@ -197,7 +199,7 @@ void NixieClass::resetBlinking (void) {
 
 void NixieClass::slotMachine (void) {
   uint8_t i;
-  for (i = 0; i < numTubes; i++) {
+  for (i = 0; i < NIXIE_NUM_TUBES; i++) {
     slotMachineEnabled[i] = true;
     slotMachineCnt[i] = slotMachineCntStart[i];
     slotMachineDelay[i] = 0;
@@ -211,8 +213,7 @@ void NixieClass::cathodePoisonPrevent (void) {
 }
 
 void NixieClass::scroll (void) {
-  if (digits->numDigits > NIXIE_DIGIT_BUF_SIZE) digits->numDigits = NIXIE_DIGIT_BUF_SIZE;
-  if (digits->numDigits > numTubes) scrollOffset = digits->numDigits - numTubes;
+  if (numDigits > NIXIE_NUM_TUBES) scrollOffset = numDigits - NIXIE_NUM_TUBES;
   scrollTs = micros ();
 }
 
@@ -222,8 +223,8 @@ void NixieClass::cancelScroll (void) {
 
 void NixieClass::blank (void) {
   uint8_t i;
-  for (i = 0; i < numTubes; i++) digitalWrite (anodePin[i], LOW); 
-  for (i = 0; i < 4;        i++) digitalWrite (bcdPin[i],   LOW);
+  for (i = 0; i < NIXIE_NUM_TUBES; i++) digitalWrite (anodePin[i], LOW); 
+  for (i = 0; i < NUM_BCD_PINS;    i++) digitalWrite (bcdPin[i],   LOW);
   digitalWrite (commaPin, LOW);
 }
 
@@ -232,15 +233,15 @@ void NixieClass::enable (bool enable) {
   if (!enabled) blank ();
 }
 
-void NixieClass::dec2bcd (uint32_t value, NixieDigits_s* output, uint8_t numDigits) {
+void NixieClass::dec2bcd (uint32_t value, NixieDigit_s* output, uint8_t outputSize, uint8_t numDigits) {
   uint8_t i, n;
   uint64_t p = 1;
   //bool leadingZero = true; 
   
-  if (numDigits > NIXIE_DIGIT_BUF_SIZE) numDigits = NIXIE_DIGIT_BUF_SIZE;
+  if (numDigits > outputSize) numDigits = outputSize;
   n = numDigits;
 
-  for (i = 0; i < n; i++) output->value[i] = 0;
+  for (i = 0; i < n; i++) output[i].value = 0;
   for (i = 0; i < n; i++) p = p * 10;    
 
   while (value >= p) value -= p;
@@ -249,7 +250,7 @@ void NixieClass::dec2bcd (uint32_t value, NixieDigits_s* output, uint8_t numDigi
     p = p / 10;
     while (value >= p) {
       value -= p;
-      output->value[n - i - 1]++;
+      output[n - i - 1].value++;
     }
     //if (output->value[i] > 0) leadingZero = false;
     //if (leadingZero) output->blank[i] = true;
@@ -258,14 +259,13 @@ void NixieClass::dec2bcd (uint32_t value, NixieDigits_s* output, uint8_t numDigi
 }
 
 
-void NixieClass::resetDigits (NixieDigits_s *output) {
+void NixieClass::resetDigits (NixieDigit_s *output, uint8_t outputSize) {
   int8_t i;
 
-  for (i = 0; i < NIXIE_DIGIT_BUF_SIZE; i++) {
-    output->value[i] = 0;
-    output->blank[i] = false;
-    output->comma[i] = false;
-    output->blink[i] = false;
+  for (i = 0; i < outputSize; i++) {
+    output[i].value = 0;
+    output[i].blank = false;
+    output[i].comma = false;
+    output[i].blink = false;
   }
-  output->numDigits = NIXIE_MAX_NUM_TUBES;
 }

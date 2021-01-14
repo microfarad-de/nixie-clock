@@ -67,7 +67,7 @@
 //#include "BuildDate.h"
 
 
-#define DEBUG_VALUES        // activate the debug values within the service menu
+//#define DEBUG_VALUES        // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
@@ -243,33 +243,33 @@ const struct SettingsLut_t {
  * Global variables
  */
 struct G_t {
-  uint32_t timer1Step;                          // minimum adjustment step for Timer1 in µs
-  uint32_t timer1Period;                        // Timer1 period = timerPeriod / TIMER1_DIVIDER
-  uint32_t timer1PeriodFH;                      // Timer1 high fractional part
-  uint32_t timer1PeriodFL;                      // Timer1 low fractional part
-  uint32_t timer1PeriodLow;                     // Timer1 period rounded down to the multiple of timer1Step (µs)
-  uint32_t timer1PeriodHigh;                    // Timer1 period rounded up to the multiple of timer1Step (µs)
-  uint32_t timer2Step;                          // minimum adjustment step for Timers in µs
-  uint32_t timer2PeriodFH;                      // Timer2 high fractional part
-  uint32_t timer2PeriodFL;                      // Timer2 low fractional part
-  uint32_t timer2PeriodLow;                     // Timer2 period rounded down to the multiple of timer2Step (µs)
-  uint32_t timer2PeriodHigh;                    // Timer2 period rounded up to the multiple of timer2Step (µs)
-  volatile bool timer1UpdateFlag = true;        // set to true if Timer1 parameters have been updated
-  volatile bool timer2UpdateFlag = true;        // set to true if Timer2 parameters have been updated
-  uint32_t dcfSyncInterval    = 0;              // DCF77 synchronization interval in minutes
-  time_t   lastDcfSyncTime    = 0;              // stores the time of last successful DCF77 synchronizaiton
-  bool     manuallyAdjusted   = true;           // prevent crystal drift compensation if clock was manually adjusted  
-  bool     dcfSyncActive      = true;           // enable/disable DCF77 synchronization
-  bool     cppEffectEnabled   = false;          // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
-  uint32_t secTickMsStamp     = 0;              // millis() at the last second tick, used for accurate crystal drift compensation
-  volatile bool    timer1TickFlag     = false;  // flag is set every second by the Timer1 ISR 
-  volatile uint8_t timer2SecCounter   = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
-  volatile uint8_t timer2TenthCounter = 0;      // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
-  time_t   systemTime                 = 0;      // current system time
-  tm       *systemTm                  = NULL;   // pointer to the current system time structure
-  NixieDigits_s timeDigits;                     // stores the Nixie display digit values of the current time
-  NixieDigits_s dateDigits;                     // stores the Nixie display digit values of the current date 
-  MenuState_e   menuState             = SHOW_TIME_E;  // state of the menu navigation state machine 
+  uint32_t timer1Step;                         // minimum adjustment step for Timer1 in µs
+  uint32_t timer1Period;                       // Timer1 period = timerPeriod / TIMER1_DIVIDER
+  uint32_t timer1PeriodFH;                     // Timer1 high fractional part
+  uint32_t timer1PeriodFL;                     // Timer1 low fractional part
+  uint32_t timer1PeriodLow;                    // Timer1 period rounded down to the multiple of timer1Step (µs)
+  uint32_t timer1PeriodHigh;                   // Timer1 period rounded up to the multiple of timer1Step (µs)
+  uint32_t timer2Step;                         // minimum adjustment step for Timers in µs
+  uint32_t timer2PeriodFH;                     // Timer2 high fractional part
+  uint32_t timer2PeriodFL;                     // Timer2 low fractional part
+  uint32_t timer2PeriodLow;                    // Timer2 period rounded down to the multiple of timer2Step (µs)
+  uint32_t timer2PeriodHigh;                   // Timer2 period rounded up to the multiple of timer2Step (µs)
+  volatile bool timer1UpdateFlag = true;       // set to true if Timer1 parameters have been updated
+  volatile bool timer2UpdateFlag = true;       // set to true if Timer2 parameters have been updated
+  uint32_t dcfSyncInterval    = 0;             // DCF77 synchronization interval in minutes
+  time_t   lastDcfSyncTime    = 0;             // stores the time of last successful DCF77 synchronizaiton
+  bool     manuallyAdjusted   = true;          // prevent crystal drift compensation if clock was manually adjusted  
+  bool     dcfSyncActive      = true;          // enable/disable DCF77 synchronization
+  bool     cppEffectEnabled   = false;         // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning) 
+  uint32_t secTickMsStamp     = 0;             // millis() at the last second tick, used for accurate crystal drift compensation
+  volatile bool    timer1TickFlag     = false; // flag is set every second by the Timer1 ISR 
+  volatile uint8_t timer2SecCounter   = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
+  volatile uint8_t timer2TenthCounter = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
+  time_t   systemTime                 = 0;     // current system time
+  tm       *systemTm                  = NULL;  // pointer to the current system time structure
+  NixieDigit_s timeDigits[NIXIE_NUM_TUBES];    // stores the Nixie display digit values of the current time
+  NixieDigit_s dateDigits[NIXIE_NUM_TUBES];    // stores the Nixie display digit values of the current date 
+  MenuState_e   menuState     = SHOW_TIME_E;   // state of the menu navigation state machine 
 #ifdef SERIAL_DEBUG
   volatile uint8_t printTickCount     = 0;     // incremented by the Timer1 ISR every second
 #endif
@@ -339,9 +339,8 @@ void setup() {
   Adc.initialize (ADC_PRESCALER_128, ADC_DEFAULT);
 
   // initialize the Nixie tube display
-  Nixie.initialize ( NIXIE_MAX_NUM_TUBES,
-          ANODE0_PIN, ANODE1_PIN, ANODE2_PIN, ANODE3_PIN, ANODE4_PIN, ANODE5_PIN,
-          BCD0_PIN, BCD1_PIN, BCD2_PIN, BCD3_PIN, COMMA_PIN, &G.timeDigits);
+  Nixie.initialize ( ANODE0_PIN, ANODE1_PIN, ANODE2_PIN, ANODE3_PIN, ANODE4_PIN, ANODE5_PIN,
+          BCD0_PIN, BCD1_PIN, BCD2_PIN, BCD3_PIN, COMMA_PIN, G.timeDigits, NIXIE_NUM_TUBES);
   
   // initialize the brightness control algorithm
   Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
@@ -356,10 +355,6 @@ void setup() {
 
   // retrieve system settings period from EEOROM
   eepromRead (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
-  PRINT   ("[setup] nixieUptime=");
-  PRINTLN (Settings.nixieUptime, DEC);
-  //PRINT   ("[setup] nixieUptimeResetCode=");
-  //PRINTLN (Settings.nixieUptimeResetCode, HEX);
 
   // validate the Timer1 period loaded from EEPROM
   if (Settings.timerPeriod < TIMER_MIN_PERIOD || Settings.timerPeriod > TIMER_MAX_PERIOD) 
@@ -367,8 +362,9 @@ void setup() {
   
 #ifdef NIXIE_UPTIME_RESET
   // force a nixie tube uptime reset
-  Settings.nixieUptime          = NIXIE_UPTIME_RESET_VALUE;
+  Settings.nixieUptime = NIXIE_UPTIME_RESET_VALUE;
   eepromWriteSettings ();
+  PRINTLN ("[setup] Nixie uptime reset");
 #endif
 
   // reset all settings on first-time boot
@@ -605,7 +601,6 @@ void timer1ISR (void) {
   static uint32_t fractCountL = 0;
   static bool toggleFlag = false;
   uint8_t add1;
-  
 
   system_tick ();
 
@@ -940,27 +935,27 @@ void updateDigits () {
   static int8_t lastMin = 0;
   
   // check whether current state requires time or date display
-  G.timeDigits.value[0] = dec2bcdLow  (G.systemTm->tm_sec);
-  G.timeDigits.value[1] = dec2bcdHigh (G.systemTm->tm_sec);
-  G.timeDigits.value[2] = dec2bcdLow  (G.systemTm->tm_min);
-  G.timeDigits.value[3] = dec2bcdHigh (G.systemTm->tm_min);
-  G.timeDigits.value[4] = dec2bcdLow  (G.systemTm->tm_hour);
-  G.timeDigits.value[5] = dec2bcdHigh (G.systemTm->tm_hour);
-  G.dateDigits.value[0] = dec2bcdLow  (G.systemTm->tm_year);
-  G.dateDigits.value[1] = dec2bcdHigh (G.systemTm->tm_year);
-  G.dateDigits.value[2] = dec2bcdLow  (G.systemTm->tm_mon + 1);
-  G.dateDigits.value[3] = dec2bcdHigh (G.systemTm->tm_mon + 1);
-  G.dateDigits.value[4] = dec2bcdLow  (G.systemTm->tm_mday);
-  G.dateDigits.value[5] = dec2bcdHigh (G.systemTm->tm_mday); 
+  G.timeDigits[0].value = dec2bcdLow  (G.systemTm->tm_sec);
+  G.timeDigits[1].value = dec2bcdHigh (G.systemTm->tm_sec);
+  G.timeDigits[2].value = dec2bcdLow  (G.systemTm->tm_min);
+  G.timeDigits[3].value = dec2bcdHigh (G.systemTm->tm_min);
+  G.timeDigits[4].value = dec2bcdLow  (G.systemTm->tm_hour);
+  G.timeDigits[5].value = dec2bcdHigh (G.systemTm->tm_hour);
+  G.dateDigits[0].value = dec2bcdLow  (G.systemTm->tm_year);
+  G.dateDigits[1].value = dec2bcdHigh (G.systemTm->tm_year);
+  G.dateDigits[2].value = dec2bcdLow  (G.systemTm->tm_mon + 1);
+  G.dateDigits[3].value = dec2bcdHigh (G.systemTm->tm_mon + 1);
+  G.dateDigits[4].value = dec2bcdLow  (G.systemTm->tm_mday);
+  G.dateDigits[5].value = dec2bcdHigh (G.systemTm->tm_mday); 
 
   
   if (G.menuState == SHOW_TIME) {
     // trigger Nixie digit "Slot Machine" effect
-    if (G.systemTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && G.timeDigits.value[2] == 0))) {
+    if (G.systemTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && G.timeDigits[2].value == 0))) {
       Nixie.slotMachine();
     }
     // trigger the cathode poisoning prevention routine
-    if (Settings.cathodePoisonPrevent == 1 && G.cppEffectEnabled && G.timeDigits.value[0] == 0) {
+    if (Settings.cathodePoisonPrevent == 1 && G.cppEffectEnabled && G.timeDigits[0].value == 0) {
       Nixie.setBrightness (Brightness.maximum ());
       Nixie.cathodePoisonPrevent ();
     }
@@ -1167,11 +1162,21 @@ void reorderMenu (int8_t menuIdx) {
 }
 /*********/
 
+
+
+/***********************************
+ * Code snipped for calculating the week day
+ ***********************************/
+#define WEEK_DAY() \
+  (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
+/*********/
+
+
 /***********************************
  * Code snipped for calculating the calendar week
  ***********************************/
 #define CALENDAR_WEEK() \
-   (int8_t)week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
+  (int8_t)week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
 /*********/
 
 /***********************************
@@ -1192,8 +1197,9 @@ uint8_t calendarWeek (void) {
 /*********/
 
 
-#define SCROLL_LUT_SIZE  18    // digit scrolling lookup dable size
-#define SCROLL_INTERVAL  1000  // digit scrolling interval
+#define SCROLL_LUT_SIZE   18    // digit scrolling lookup dable size
+#define SCROLL_INTERVAL   1000  // digit scrolling interval
+#define VALUE_DIGITS_SIZE 14    // size of the general purpose digit buffer
 
 /***********************************
  * Implements the settings menu 
@@ -1216,7 +1222,7 @@ void settingsMenu (void) {
   static uint32_t bannerTs = 0;
   static uint32_t scrollDelay = scrollLut[0];
   static uint32_t menuTimeout = menuTimeoutDefault;
-  static NixieDigits_s valueDigits;
+  static NixieDigit_s valueDigits[VALUE_DIGITS_SIZE];
   static int8_t sIdx = 0;
   static int8_t vIdx = 0;
   static bool brightnessEnable = false;
@@ -1393,8 +1399,8 @@ void settingsMenu (void) {
     case SHOW_TIME_E:
       Nixie.enable (true);
       Nixie.cancelScroll ();
-      Nixie.setDigits (&G.timeDigits);
-      for (i = 0; i < 6; i++) G.timeDigits.blink[i] = false;
+      Nixie.setDigits (G.timeDigits, NIXIE_NUM_TUBES);
+      for (i = 0; i < 6; i++) G.timeDigits[i].blink = false;
       menuIdx = 0;
       nextState = G.menuOrder[menuIdx]; // switch to this state after short-pressing button 0
                                         // use dynamic menu ordering
@@ -1405,10 +1411,10 @@ void settingsMenu (void) {
       
     /*################################################################################*/
     case SHOW_DATE_E:
-      Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.comma[4] = true;
-      G.dateDigits.comma[2] = true;
-      for (i = 0; i < 6; i++) G.dateDigits.blink[i] = false;
+      Nixie.setDigits (G.dateDigits, NIXIE_NUM_TUBES);
+      G.dateDigits[4].comma = true;
+      G.dateDigits[2].comma = true;
+      for (i = 0; i < 6; i++) G.dateDigits[i].blink = false;
       //menuIdx = 0;
       nextState   = SHOW_TIME_E;
       returnState = SET_DAY_E;
@@ -1419,15 +1425,15 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SHOW_WEEK_E: 
-      Nixie.resetDigits (&valueDigits);
-      Nixie.setDigits (&valueDigits); 
+      Nixie.resetDigits (valueDigits, VALUE_DIGITS_SIZE);
+      Nixie.setDigits (valueDigits, NIXIE_NUM_TUBES); 
       valU8 = calendarWeek ();
-      valueDigits.value[0] = dec2bcdLow (valU8);
-      valueDigits.value[1] = dec2bcdHigh (valU8);
-      valueDigits.blank[2] = true;
-      valueDigits.blank[3] = true;
-      valueDigits.value[4] = (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
-      valueDigits.blank[5] = true;
+      valueDigits[0].value = dec2bcdLow (valU8);
+      valueDigits[1].value = dec2bcdHigh (valU8);
+      valueDigits[2].blank = true;
+      valueDigits[3].blank = true;
+      valueDigits[4].value = WEEK_DAY();
+      valueDigits[5].blank = true;
       nextState   = SHOW_TIME_E;
       returnState = SET_WEEK_E;
       G.menuState = SHOW_WEEK; 
@@ -1437,9 +1443,9 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SHOW_ALARM_E:
-      Nixie.setDigits (&Alarm.digits);
+      Nixie.setDigits (Alarm.digits, NIXIE_NUM_TUBES);
       Alarm.displayRefresh ();
-      for (i = 0; i < 6; i++) Alarm.digits.blink[i] = false;
+      for (i = 0; i < NIXIE_NUM_TUBES; i++) Alarm.digits[i].blink = false;
       //menuIdx = 0;
       nextState   = SHOW_TIME_E;
       returnState = SET_ALARM_E;
@@ -1451,7 +1457,7 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SHOW_TIMER_E:
       Nixie.enable (true);
-      Nixie.setDigits (&CdTimer.digits);
+      Nixie.setDigits (CdTimer.digits, NIXIE_NUM_TUBES);
       if (!CdTimer.running && !CdTimer.alarm && !Stopwatch.active) CdTimer.reset ();
       menuIdx++;
       nextState   = G.menuOrder[menuIdx];
@@ -1500,7 +1506,7 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SHOW_STOPWATCH_E:
-      Nixie.setDigits (&Stopwatch.digits);
+      Nixie.setDigits (Stopwatch.digits, NIXIE_NUM_TUBES);
       if (!Stopwatch.active && !CdTimer.active) Stopwatch.reset ();
       menuIdx++;
       nextState   = G.menuOrder[menuIdx];
@@ -1539,8 +1545,7 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SHOW_SERVICE_E:
-      Nixie.resetDigits (&valueDigits);
-      Nixie.setDigits (&valueDigits);
+      Nixie.resetDigits (valueDigits, VALUE_DIGITS_SIZE);
       bannerTs = ts;
       vIdx = 0;
       nextState   = SHOW_TIME_E;
@@ -1553,7 +1558,7 @@ void settingsMenu (void) {
           timeoutTs = ts;  // reset the menu timeout
           bannerTs  = ts;  // reset display scroll period
           Nixie.cancelScroll ();
-          Nixie.resetDigits (&valueDigits);
+          Nixie.resetDigits (valueDigits, VALUE_DIGITS_SIZE);
         if      (Button[1].pressed) {
           vIdx++; if (vIdx >= NUM_SERVICE_VALUES) vIdx = 0;
         }
@@ -1563,59 +1568,59 @@ void settingsMenu (void) {
         SHOW_SERVICE_ENTRY_POINT:
         // show Timer1 period (default)
         if (vIdx == 0) {
-          valueDigits.numDigits = 11;
-          Nixie.dec2bcd (G.timer1Period * 100, &valueDigits, 9);
-          valueDigits.value[10] = 1;
-          valueDigits.comma[10] = true;
-          valueDigits.blank[9]  = true;
-          valueDigits.comma[2]  = true;
-          valueDigits.value[1]  = dec2bcdHigh(G.timer1PeriodFL);
-          valueDigits.value[0]  = dec2bcdLow(G.timer1PeriodFL);
+          Nixie.setDigits (valueDigits, 11);
+          Nixie.dec2bcd (G.timer1Period * 100, valueDigits, VALUE_DIGITS_SIZE, 9);
+          valueDigits[10].value = 1;
+          valueDigits[10].comma = true;
+          valueDigits[9].blank  = true;
+          valueDigits[2].comma  = true;
+          valueDigits[1].value  = dec2bcdHigh(G.timer1PeriodFL);
+          valueDigits[0].value  = dec2bcdLow(G.timer1PeriodFL);
         }
         // show Nixie tube uptime
         else if (vIdx == 1) {
-          valueDigits.numDigits = 8;
+          Nixie.setDigits (valueDigits, 8);
           cli ();
-          Nixie.dec2bcd (Settings.nixieUptime / 3600, &valueDigits, 6);
+          Nixie.dec2bcd (Settings.nixieUptime / 3600, valueDigits, VALUE_DIGITS_SIZE, 6);
           sei ();
-          valueDigits.value[7] = 2;
-          valueDigits.comma[7] = true;
-          valueDigits.blank[6] = true;
+          valueDigits[7].value = 2;
+          valueDigits[7].comma = true;
+          valueDigits[6].blank = true;
         }
         // show firmware version
         else if (vIdx == 2) {
-          valueDigits.numDigits = 8;
-          valueDigits.value[7] = 3;
-          valueDigits.comma[7] = true;
-          valueDigits.blank[6] = true; 
-          valueDigits.value[5] = dec2bcdHigh (VERSION_MAJOR);
-          valueDigits.value[4] = dec2bcdLow (VERSION_MAJOR);
-          valueDigits.comma[4] = true;
-          valueDigits.value[3] = dec2bcdHigh (VERSION_MINOR);
-          valueDigits.value[2] = dec2bcdLow (VERSION_MINOR);
-          valueDigits.comma[2] = true;    
-          valueDigits.value[1] = dec2bcdHigh (VERSION_MAINT);
-          valueDigits.value[0] = dec2bcdLow (VERSION_MAINT);  
+          Nixie.setDigits (valueDigits, 8);
+          valueDigits[7].value = 3;
+          valueDigits[7].comma = true;
+          valueDigits[6].blank = true; 
+          valueDigits[5].value = dec2bcdHigh (VERSION_MAJOR);
+          valueDigits[4].value = dec2bcdLow (VERSION_MAJOR);
+          valueDigits[4].comma = true;
+          valueDigits[3].value = dec2bcdHigh (VERSION_MINOR);
+          valueDigits[2].value = dec2bcdLow (VERSION_MINOR);
+          valueDigits[2].comma = true;    
+          valueDigits[1].value = dec2bcdHigh (VERSION_MAINT);
+          valueDigits[0].value = dec2bcdLow (VERSION_MAINT);  
         }
 #ifdef DEBUG_VALUES   
         // show the Debug values
         else if (vIdx > 2 && vIdx < NUM_SERVICE_VALUES) {
           uint8_t idx = vIdx - (NUM_SERVICE_VALUES - NUM_DEBUG_VALUES);
-          valueDigits.numDigits = NUM_DEBUG_DIGITS + 2;
-          valueDigits.value[NUM_DEBUG_DIGITS + 1] = idx;
-          valueDigits.comma[NUM_DEBUG_DIGITS]     = true;
-          valueDigits.blank[NUM_DEBUG_DIGITS]     = true;
+          Nixie.setDigits (valueDigits, NUM_DEBUG_DIGITS + 2);
+          valueDigits[NUM_DEBUG_DIGITS + 1].value = idx;
+          valueDigits[NUM_DEBUG_DIGITS] .comma    = true;
+          valueDigits[NUM_DEBUG_DIGITS].blank     = true;
           if (idx < NUM_DEBUG_VALUES)  {   
             if (Debug.values[idx] < 0) {
-              Nixie.dec2bcd ((uint32_t)(-Debug.values[idx]), &valueDigits, NUM_DEBUG_DIGITS);
-              for (i = 0; i < NUM_DEBUG_DIGITS; i++) valueDigits.comma[i] = true;
+              Nixie.dec2bcd ((uint32_t)(-Debug.values[idx]), valueDigits, VALUE_DIGITS_SIZE, NUM_DEBUG_DIGITS);
+              for (i = 0; i < NUM_DEBUG_DIGITS; i++) valueDigits[i].comma = true;
             }
             else {
-              Nixie.dec2bcd ((uint32_t)Debug.values[idx], &valueDigits, NUM_DEBUG_DIGITS);
+              Nixie.dec2bcd ((uint32_t)Debug.values[idx], valueDigits, VALUE_DIGITS_SIZE, NUM_DEBUG_DIGITS);
             }
           }
           else {
-            Nixie.dec2bcd (0, &valueDigits, NUM_DEBUG_DIGITS);
+            Nixie.dec2bcd (0, valueDigits, VALUE_DIGITS_SIZE, NUM_DEBUG_DIGITS);
           }
         }
 #endif
@@ -1642,12 +1647,12 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_ALARM_E:
-      Nixie.setDigits (&Alarm.digits);
+      Nixie.setDigits (Alarm.digits, NIXIE_NUM_TUBES);
       Alarm.displayRefresh ();
-      for (i = 0; i < 6; i++) Alarm.digits.blink[i] = false;
+      for (i = 0; i < NIXIE_NUM_TUBES; i++) Alarm.digits[i].blink = false;
       sIdx = 0;
-      Alarm.digits.blink[5] = true;
-      Alarm.digits.blink[4] = true;
+      Alarm.digits[5].blink = true;
+      Alarm.digits[4].blink = true;
       returnState = SHOW_ALARM_E;
       G.menuState = SET_ALARM;
     case SET_ALARM:
@@ -1655,22 +1660,22 @@ void settingsMenu (void) {
       if (Button[0].falling ()) {   
         sIdx++; if (sIdx > 2) sIdx = 0;
         if (sIdx == 0) {
-          Alarm.digits.blink[5] = true;
-          Alarm.digits.blink[4] = true;
-          Alarm.digits.blink[1] = false;
-          Alarm.digits.blink[0] = false;
+          Alarm.digits[5].blink = true;
+          Alarm.digits[4].blink = true;
+          Alarm.digits[1].blink = false;
+          Alarm.digits[0].blink = false;
         }
         else if (sIdx == 1) {
-          Alarm.digits.blink[5] = false;
-          Alarm.digits.blink[4] = false;
-          Alarm.digits.blink[3] = true;
-          Alarm.digits.blink[2] = true;
+          Alarm.digits[5].blink = false;
+          Alarm.digits[4].blink = false;
+          Alarm.digits[3].blink = true;
+          Alarm.digits[2].blink = true;
         }
         else if (sIdx == 2) {
-          Alarm.digits.blink[3] = false;
-          Alarm.digits.blink[2] = false;
-          Alarm.digits.blink[1] = true;
-          Alarm.digits.blink[0] = true;
+          Alarm.digits[3].blink = false;
+          Alarm.digits[2].blink = false;
+          Alarm.digits[1].blink = true;
+          Alarm.digits[0].blink = true;
         }
       }
       // button 1 or 2 - pressed --> increase/decrease value
@@ -1697,21 +1702,21 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_SETTINGS_E:
       Nixie.cancelScroll ();
-      Nixie.setDigits (&valueDigits);
-      valueDigits.blink[0]  = true;
-      valueDigits.blink[1]  = true;
-      valueDigits.blink[4]  = false;
-      valueDigits.blink[5]  = false;
-      valueDigits.blank[2] = true;
-      valueDigits.blank[3] = true;
-      valueDigits.comma[5] = true;
+      Nixie.setDigits (valueDigits, NIXIE_NUM_TUBES);
+      valueDigits[0].blink = true;
+      valueDigits[1].blink = true;
+      valueDigits[4].blink = false;
+      valueDigits[5].blink = false;
+      valueDigits[2].blank = true;
+      valueDigits[3].blank = true;
+      valueDigits[5].comma = true;
       sIdx = 0;
-      valueDigits.value[5] = SettingsLut[sIdx].idDigit1;
-      valueDigits.value[4] = SettingsLut[sIdx].idDigit0;
+      valueDigits[5].value = SettingsLut[sIdx].idDigit1;
+      valueDigits[4].value = SettingsLut[sIdx].idDigit0;
       val8 = *SettingsLut[sIdx].value;
-      valueDigits.comma[2] = (val8 < 0);
-      valueDigits.value[1] = dec2bcdHigh ((uint8_t)abs(val8)); 
-      valueDigits.value[0] = dec2bcdLow ((uint8_t)abs(val8)); 
+      valueDigits[2].comma = (val8 < 0);
+      valueDigits[1].value = dec2bcdHigh ((uint8_t)abs(val8)); 
+      valueDigits[0].value = dec2bcdLow ((uint8_t)abs(val8)); 
       returnState = SHOW_TIME_E;
       G.menuState = SET_SETTINGS;
     case SET_SETTINGS:
@@ -1725,12 +1730,12 @@ void settingsMenu (void) {
           Settings.clockDriftCorrect = 0;
         }
         
-        valueDigits.value[5] = SettingsLut[sIdx].idDigit1;
-        valueDigits.value[4] = SettingsLut[sIdx].idDigit0;
+        valueDigits[5].value = SettingsLut[sIdx].idDigit1;
+        valueDigits[4].value = SettingsLut[sIdx].idDigit0;
         val8 = *SettingsLut[sIdx].value;
-        valueDigits.comma[2] = (val8 < 0);
-        valueDigits.value[1] = dec2bcdHigh ((uint8_t)abs(val8)); 
-        valueDigits.value[0] = dec2bcdLow ((uint8_t)abs(val8));
+        valueDigits[2].comma = (val8 < 0);
+        valueDigits[1].value = dec2bcdHigh ((uint8_t)abs(val8)); 
+        valueDigits[0].value = dec2bcdLow ((uint8_t)abs(val8));
       }
       // button 1 or 2 pressed --> increase/decrease value
       else if (Button[1].pressed || Button[2].pressed) {
@@ -1746,9 +1751,9 @@ void settingsMenu (void) {
             if (val16 < SettingsLut[sIdx].minVal) val16 = SettingsLut[sIdx].maxVal;
           }
           *SettingsLut[sIdx].value = (int8_t)val16;
-          valueDigits.comma[2] = (val16 < 0);
-          valueDigits.value[1] = dec2bcdHigh ((uint8_t)abs(val16)); 
-          valueDigits.value[0] = dec2bcdLow ((uint8_t)abs(val16));
+          valueDigits[2].comma = (val16 < 0);
+          valueDigits[1].value = dec2bcdHigh ((uint8_t)abs(val16)); 
+          valueDigits[0].value = dec2bcdLow ((uint8_t)abs(val16));
           Nixie.refresh ();
           scrollTs = ts;
           
@@ -1777,13 +1782,13 @@ void settingsMenu (void) {
     /*################################################################################*/
     case SET_HOUR_E:
       Nixie.cancelScroll ();
-      Nixie.setDigits (&G.timeDigits);
-      G.timeDigits.blink[0] = false;
-      G.timeDigits.blink[1] = false;
-      G.timeDigits.blink[2] = false;
-      G.timeDigits.blink[3] = false;
-      G.timeDigits.blink[4] = true;
-      G.timeDigits.blink[5] = true;
+      Nixie.setDigits (G.timeDigits, NIXIE_NUM_TUBES);
+      G.timeDigits[0].blink = false;
+      G.timeDigits[1].blink = false;
+      G.timeDigits[2].blink = false;
+      G.timeDigits[3].blink = false;
+      G.timeDigits[4].blink = true;
+      G.timeDigits[5].blink = true;
       nextState   = SET_MIN_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_HOUR;
@@ -1808,13 +1813,13 @@ void settingsMenu (void) {
       
     /*################################################################################*/
     case SET_MIN_E:
-      Nixie.setDigits (&G.timeDigits);
-      G.timeDigits.blink[0] = false;
-      G.timeDigits.blink[1] = false;
-      G.timeDigits.blink[2] = true;
-      G.timeDigits.blink[3] = true;
-      G.timeDigits.blink[4] = false;
-      G.timeDigits.blink[5] = false;
+      Nixie.setDigits (G.timeDigits, NIXIE_NUM_TUBES);
+      G.timeDigits[0].blink = false;
+      G.timeDigits[1].blink = false;
+      G.timeDigits[2].blink = true;
+      G.timeDigits[3].blink = true;
+      G.timeDigits[4].blink = false;
+      G.timeDigits[5].blink = false;
       nextState   = SET_SEC_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_MIN;
@@ -1839,13 +1844,13 @@ void settingsMenu (void) {
       
     /*################################################################################*/
     case SET_SEC_E:
-      Nixie.setDigits (&G.timeDigits);
-      G.timeDigits.blink[0] = true;
-      G.timeDigits.blink[1] = true;
-      G.timeDigits.blink[2] = false;
-      G.timeDigits.blink[3] = false;
-      G.timeDigits.blink[4] = false;
-      G.timeDigits.blink[5] = false;
+      Nixie.setDigits (G.timeDigits, NIXIE_NUM_TUBES);
+      G.timeDigits[0].blink = true;
+      G.timeDigits[1].blink = true;
+      G.timeDigits[2].blink = false;
+      G.timeDigits[3].blink = false;
+      G.timeDigits[4].blink = false;
+      G.timeDigits[5].blink = false;
       nextState   = SET_DAY_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_SEC;
@@ -1853,8 +1858,8 @@ void settingsMenu (void) {
       // button 1 - rising edge --> stop Timer1 then reset seconds to 0
       if (Button[1].rising ()) {
         timeoutTs = ts; // reset the menu timeout
-        G.timeDigits.blink[0] = false;
-        G.timeDigits.blink[1] = false; 
+        G.timeDigits[0].blink = false;
+        G.timeDigits[1].blink = false; 
         cli ();
         Timer1.stop ();
         Timer1.restart ();
@@ -1869,8 +1874,8 @@ void settingsMenu (void) {
       }
       // button 1 - falling edge --> start Timer1
       else if (Button[1].falling ()) {
-        G.timeDigits.blink[0] = true;
-        G.timeDigits.blink[1] = true;
+        G.timeDigits[0].blink = true;
+        G.timeDigits[1].blink = true;
         Nixie.resetBlinking ();
         sysTime = time (NULL);
         set_system_time (sysTime - 1);
@@ -1880,15 +1885,15 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_DAY_E:
-      Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.blink[0] = false;
-      G.dateDigits.blink[1] = false;
-      G.dateDigits.blink[2] = false;
-      G.dateDigits.blink[3] = false;
-      G.dateDigits.blink[4] = true;
-      G.dateDigits.blink[5] = true; 
-      G.dateDigits.comma[4] = true;
-      G.dateDigits.comma[2] = true;
+      Nixie.setDigits (G.dateDigits, NIXIE_NUM_TUBES);
+      G.dateDigits[0].blink = false;
+      G.dateDigits[1].blink = false;
+      G.dateDigits[2].blink = false;
+      G.dateDigits[3].blink = false;
+      G.dateDigits[4].blink = true;
+      G.dateDigits[5].blink = true; 
+      G.dateDigits[4].comma = true;
+      G.dateDigits[2].comma = true;
       nextState   = SET_MONTH_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_DAY;
@@ -1913,13 +1918,13 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_MONTH_E:
-      Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.blink[0] = false;
-      G.dateDigits.blink[1] = false;
-      G.dateDigits.blink[2] = true;
-      G.dateDigits.blink[3] = true;
-      G.dateDigits.blink[4] = false;
-      G.dateDigits.blink[5] = false; 
+      Nixie.setDigits (G.dateDigits, NIXIE_NUM_TUBES);
+      G.dateDigits[0].blink = false;
+      G.dateDigits[1].blink = false;
+      G.dateDigits[2].blink = true;
+      G.dateDigits[3].blink = true;
+      G.dateDigits[4].blink = false;
+      G.dateDigits[5].blink = false; 
       nextState   = SET_YEAR_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_MONTH;
@@ -1944,13 +1949,13 @@ void settingsMenu (void) {
 
     /*################################################################################*/
     case SET_YEAR_E:
-      Nixie.setDigits (&G.dateDigits);
-      G.dateDigits.blink[0] = true;
-      G.dateDigits.blink[1] = true;
-      G.dateDigits.blink[2] = false;
-      G.dateDigits.blink[3] = false;
-      G.dateDigits.blink[4] = false;
-      G.dateDigits.blink[5] = false; 
+      Nixie.setDigits (G.dateDigits, NIXIE_NUM_TUBES);
+      G.dateDigits[0].blink = true;
+      G.dateDigits[1].blink = true;
+      G.dateDigits[2].blink = false;
+      G.dateDigits[3].blink = false;
+      G.dateDigits[4].blink = false;
+      G.dateDigits[5].blink = false; 
       nextState   = SET_WEEK_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_YEAR;
@@ -1975,17 +1980,17 @@ void settingsMenu (void) {
       
     /*################################################################################*/
     case SET_WEEK_E:
-      Nixie.resetDigits (&valueDigits);
-      Nixie.setDigits (&valueDigits); 
+      Nixie.resetDigits (valueDigits, VALUE_DIGITS_SIZE);
+      Nixie.setDigits (valueDigits, NIXIE_NUM_TUBES); 
       valU8 = calendarWeek ();
-      valueDigits.blink[0] = true;
-      valueDigits.blink[1] = true;
-      valueDigits.value[0] = dec2bcdLow (valU8);
-      valueDigits.value[1] = dec2bcdHigh (valU8);
-      valueDigits.blank[2] = true;
-      valueDigits.blank[3] = true;
-      valueDigits.value[4] = (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
-      valueDigits.blank[5] = true;
+      valueDigits[0].blink = true;
+      valueDigits[1].blink = true;
+      valueDigits[0].value = dec2bcdLow (valU8);
+      valueDigits[1].value = dec2bcdHigh (valU8);
+      valueDigits[2].blank = true;
+      valueDigits[3].blank = true;
+      valueDigits[4].value = WEEK_DAY();
+      valueDigits[5].blank = true;
       nextState   = SET_HOUR_E;
       returnState = SHOW_WEEK_E;
       G.menuState = SET_WEEK;
@@ -1996,8 +2001,8 @@ void settingsMenu (void) {
         if (ts - scrollTs >= scrollDelay) {
           Settings.calWeekAdjust++;
           valU8 = calendarWeek ();
-          valueDigits.value[0] = dec2bcdLow (valU8);
-          valueDigits.value[1] = dec2bcdHigh (valU8);
+          valueDigits[0].value = dec2bcdLow (valU8);
+          valueDigits[1].value = dec2bcdHigh (valU8);
           scrollTs = ts;
         }   
       }
@@ -2007,8 +2012,8 @@ void settingsMenu (void) {
         if (ts - scrollTs >= scrollDelay) {
           Settings.calWeekAdjust--;
           valU8 = calendarWeek ();
-          valueDigits.value[0] = dec2bcdLow (valU8);
-          valueDigits.value[1] = dec2bcdHigh (valU8);
+          valueDigits[0].value = dec2bcdLow (valU8);
+          valueDigits[1].value = dec2bcdHigh (valU8);
           scrollTs = ts;
         }   
       }

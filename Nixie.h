@@ -30,26 +30,19 @@
 #include <Arduino.h>
 
 /*
- * Nixie tube display configurations
+ * Number of Nixie tubes
  */
-enum NixieNumTubes_e {
-  NIXIE_4TUBES = 4,
-  NIXIE_6TUBES = 6
-};
+#define NIXIE_NUM_TUBES 6
 
-
-#define NIXIE_MAX_NUM_TUBES NIXIE_6TUBES
-#define NIXIE_DIGIT_BUF_SIZE 14
 
 /*
- * Array of Nixie tube digit values
+ * Nixie tube digit structure
  */
-struct NixieDigits_s {
-  uint8_t value[NIXIE_DIGIT_BUF_SIZE] = { 0 };      /* BCD value */
-  bool    blank[NIXIE_DIGIT_BUF_SIZE] = { false };  /* blank digit */
-  bool    comma[NIXIE_DIGIT_BUF_SIZE] = { false };  /* decimal point state */
-  bool    blink[NIXIE_DIGIT_BUF_SIZE] = { false };  /* enable blinking */
-  uint8_t numDigits = NIXIE_MAX_NUM_TUBES;          /* number of active digits */
+struct NixieDigit_s {
+  uint8_t value = 0;      /* BCD value */
+  bool    blank = false;  /* blank digit */
+  bool    comma = false;  /* decimal point state */
+  bool    blink = false;  /* enable blinking */
 };
 
 
@@ -63,15 +56,14 @@ class NixieClass {
     /*
      * Initialize the hardware
      * Parameters:
-     *   numTubes     : number of Nixie tubes in the display
      *   anodePin0..5 : anode control pins
      *   bcdPin0..5   : pins connected to the BCD to decimal anode driver decoder chip (74141, K155ID1)
      *   commaPin     : pin connected to the decimal point symbol
-     *   digits       : pointer to the nixie digits structure
+     *   digits       : pointer to the Nixie digits array
+     *   numDigits    : number of Nixie digits
      *   brightness   : default brightness value (0.255)
      */
     void initialize (
-            NixieNumTubes_e numTubes,
             uint8_t anodePin0,
             uint8_t anodePin1,
             uint8_t anodePin2,
@@ -83,16 +75,18 @@ class NixieClass {
             uint8_t bcdPin2,
             uint8_t bcdPin3,
             uint8_t commaPin,
-            NixieDigits_s *digits,
+            NixieDigit_s *digits,
+            uint8_t numDigits,
             uint8_t brightness = 255
             );
 
     /* 
      * Set the pointer to the Nixie digits structure
      * Parameters:
-     *   digits     : array of Nixie tube display digits
+     *   digits    : array of Nixie tube display digits
+     *   numDigits : number of Nixie digits
      */
-    void setDigits (NixieDigits_s *digits);
+    void setDigits (NixieDigit_s *digits, uint8_t numDigits);
     
     /* 
      * Refresh the display
@@ -147,18 +141,20 @@ class NixieClass {
     /*
      * Convert a decimal value to Nixie digits BCD format
      * Parameters:
-     *   value     : value to be converted
-     *   output    : pointer to the Nixie digits structure structure
-     *   numDigits : number of BCD digits to be converted
+     *   value      : value to be converted
+     *   output     : pointer to the Nixie digits array
+     *   outputSize : size of the Nixie digits array
+     *   numDigits  : number of BCD digits to be converted
      */
-    void dec2bcd (uint32_t value, NixieDigits_s *output, uint8_t numDigits);
+    void dec2bcd (uint32_t value, NixieDigit_s *output, uint8_t outputSize, uint8_t numDigits);
 
     /*
-     * Reset a Nixie Digit buffer
+     * Reset a Nixie Digit array
      * Parameters:
-     *   output : pointer to the Nixie digits structure structure
+     *   output     : pointer to the Nixie digits array
+     *   outputSize : size of the Nixie digits array
      */
-    void resetDigits (NixieDigits_s *output);
+    void resetDigits (NixieDigit_s *output, uint8_t outputSize);
 
     /*
      * Temporarily Blank the display by turning-off all the Anodes
@@ -179,15 +175,20 @@ class NixieClass {
     volatile bool enabled = true;
 
     /*
-     * Pointer to the Nixie digits structure
+     * Pointer to the Nixie digits array
      */
-    NixieDigits_s *digits;
+    NixieDigit_s *digits;
+    
+    /*
+     * Number of Nixie digits
+     */
+    uint8_t numDigits;
 
     /*
      * Activate decimal point of a specific digit 
      * disregarding the scroll effect
      */
-    bool comma[NIXIE_MAX_NUM_TUBES] = { false };
+    bool comma[NIXIE_NUM_TUBES] = { false };
 
     /*
      * Status of the CPP feature
@@ -195,10 +196,7 @@ class NixieClass {
     bool cppEnabled = false;
 
   private:
-  
-    NixieNumTubes_e numTubes;
-    
-    uint8_t anodePin [NIXIE_MAX_NUM_TUBES];
+    uint8_t anodePin [NIXIE_NUM_TUBES];
     uint8_t bcdPin [4];
     uint8_t commaPin;
     uint32_t digitOnDuration;
@@ -209,12 +207,12 @@ class NixieClass {
     uint32_t blinkTs = 0;
     bool blinkFlag = false;
     int8_t blinkCount = 0;
-    bool slotMachineEnabled[NIXIE_MAX_NUM_TUBES] = { false };
-    uint32_t slotMachineTs[NIXIE_MAX_NUM_TUBES] = { 0 };
-    uint8_t slotMachineCnt[NIXIE_MAX_NUM_TUBES] = { 0 };
-    uint32_t slotMachineDelay[NIXIE_MAX_NUM_TUBES] = { 0 };
-    uint8_t slotMachineCntStart[NIXIE_MAX_NUM_TUBES] = {  0, 11,  5, 13,  9, 15 };
-    uint8_t slotMachineCntMax[NIXIE_MAX_NUM_TUBES]   = { 20, 50, 30, 60, 40, 70 };
+    bool slotMachineEnabled[NIXIE_NUM_TUBES] = { false };
+    uint32_t slotMachineTs[NIXIE_NUM_TUBES] = { 0 };
+    uint8_t slotMachineCnt[NIXIE_NUM_TUBES] = { 0 };
+    uint32_t slotMachineDelay[NIXIE_NUM_TUBES] = { 0 };
+    uint8_t slotMachineCntStart[NIXIE_NUM_TUBES] = {  0, 11,  5, 13,  9, 15 };
+    uint8_t slotMachineCntMax[NIXIE_NUM_TUBES]   = { 20, 50, 30, 60, 40, 70 };
     uint32_t cppTs = 0;
     uint8_t cppCnt = 0;
     uint32_t scrollTs = 0;
