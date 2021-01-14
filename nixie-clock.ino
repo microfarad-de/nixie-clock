@@ -67,7 +67,7 @@
 //#include "BuildDate.h"
 
 
-//#define DEBUG_VALUES        // activate the debug values within the service menu
+#define DEBUG_VALUES        // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
@@ -82,15 +82,16 @@
 #endif
 
 
-// reset the Nixie tube uptime to this value in seconds upon booting for the very first time
-#define NIXIE_UPTIME_RESET_VALUE  ((uint32_t)0*3600)
-  
 // if the folllowing value is changed, the Nixie tube uptime will be reset to NIXIE_UPTIME_RESET_VALUE
-#define NIXIE_UPTIME_RESET_CODE 0xDEADBEEF    
+//#define NIXIE_UPTIME_RESET 
+
+#ifdef NIXIE_UPTIME_RESET
+  // reset the Nixie tube uptime to this value in seconds upon booting for the very first time
+  #define NIXIE_UPTIME_RESET_VALUE  ((uint32_t)0*3600)
+#endif
 
 // upon the absence of this string in EEPROM all the settings will be reset to default
 #define SETTINGS_RESET_CODE 0xDEADBEEF
-
 
 // anode control pins
 #define ANODE0_PIN 12
@@ -128,9 +129,9 @@
 #define VOLTAGE_APIN   A7  // measures the retention super capacitor voltage
 
 // various constants
-#define TIMER1_DIVIDER         64            // (real Timer1 period) = TIMER_DEFAULT_PERIOD / TIMER1_DIVIDER
-#define TIMER2_DIVIDER         40            // (real Timer2 period) = (real Timer1 period) / TIMER2_DIVIDER
-#define TIMER_DEFAULT_PERIOD   1000000 * TIMER1_DIVIDER  // default value of timerPeriod (total is 1 second)
+#define TIMER1_DIVIDER         64            // (Timer1 period) = TIMER_DEFAULT_PERIOD / TIMER1_DIVIDER
+#define TIMER2_DIVIDER         40            // (Timer2 period) = (Timer1 period) / TIMER2_DIVIDER
+#define TIMER_DEFAULT_PERIOD   (1000000 * TIMER1_DIVIDER)  // default value of timerPeriod (total is 1 second)
 #define TIMER_MIN_PERIOD       (TIMER_DEFAULT_PERIOD - TIMER_DEFAULT_PERIOD / 100)  // minimum allowed value of timerPeriod
 #define TIMER_MAX_PERIOD       (TIMER_DEFAULT_PERIOD + TIMER_DEFAULT_PERIOD / 100)  // maximum allowed value of timerPeriod
 #define WDT_TIMEOUT            WDTO_4S       // watcchdog timer timeout setting
@@ -183,7 +184,7 @@ class DebugClass {
 struct Settings_t {
   uint32_t timerPeriod;           // virtual period of Timer1/Timer2 (equivalent to 1 second)
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
-  uint32_t nixieUptimeResetCode;  // uptime is reset to zero if this value is different than the value of NIXIE_UPTIME_RESET_CODE
+  uint8_t  reserved[4];           // reserved for future use
   bool     dcfSyncEnabled;        // enables DCF77 synchronization feature
   bool     dcfSignalIndicator;    // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
   uint8_t  dcfSyncHour;           // hour of day when DCF77 sync shall start
@@ -243,6 +244,7 @@ const struct SettingsLut_t {
  */
 struct G_t {
   uint32_t timer1Step;                          // minimum adjustment step for Timer1 in µs
+  uint32_t timer1Period;                        // Timer1 period = timerPeriod / TIMER1_DIVIDER
   uint32_t timer1PeriodFH;                      // Timer1 high fractional part
   uint32_t timer1PeriodFL;                      // Timer1 low fractional part
   uint32_t timer1PeriodLow;                     // Timer1 period rounded down to the multiple of timer1Step (µs)
@@ -362,14 +364,12 @@ void setup() {
   // validate the Timer1 period loaded from EEPROM
   if (Settings.timerPeriod < TIMER_MIN_PERIOD || Settings.timerPeriod > TIMER_MAX_PERIOD) 
           Settings.timerPeriod = TIMER_DEFAULT_PERIOD;
-
-  // reset nixie tube uptime on first-time boot
-  if (Settings.nixieUptimeResetCode != NIXIE_UPTIME_RESET_CODE) {
-    Settings.nixieUptime          = NIXIE_UPTIME_RESET_VALUE;
-    Settings.nixieUptimeResetCode = NIXIE_UPTIME_RESET_CODE;
-    eepromWriteSettings ();
-    PRINTLN ("[setup] nixieUptime initialized");
-  }
+  
+#ifdef NIXIE_UPTIME_RESET
+  // force a nixie tube uptime reset
+  Settings.nixieUptime          = NIXIE_UPTIME_RESET_VALUE;
+  eepromWriteSettings ();
+#endif
 
   // reset all settings on first-time boot
   if (Settings.settingsResetCode != SETTINGS_RESET_CODE) {
@@ -380,6 +380,7 @@ void setup() {
     Settings.alarm.lastMode = ALARM_WEEKDAYS;
     Settings.timerPeriod    = TIMER_DEFAULT_PERIOD;
     Settings.calWeekAdjust  = 0;
+    Settings.nixieUptime    = 0;
     for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
       *SettingsLut[i].value = SettingsLut[i].defaultVal;
       Settings.settingsResetCode = SETTINGS_RESET_CODE;
@@ -884,17 +885,19 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
  * out of the Timer1 period
  ***********************************/
 void timerCalculate (void) {
+  volatile uint32_t f, fh ,fl, low, high;
+
   if (Settings.timerPeriod < TIMER_MIN_PERIOD) Settings.timerPeriod = TIMER_MIN_PERIOD;
   if (Settings.timerPeriod > TIMER_MAX_PERIOD) Settings.timerPeriod = TIMER_MAX_PERIOD;
 
-  uint32_t timer1Period = Settings.timerPeriod / TIMER1_DIVIDER;
-  volatile uint32_t f, fh ,fl, low, high;
+  G.timer1Period = Settings.timerPeriod / TIMER1_DIVIDER;
   
   f                  = Settings.timerPeriod % (G.timer1Step * TIMER1_DIVIDER);
   fh                 = f / TIMER1_DIVIDER;
   fl                 = f % TIMER1_DIVIDER;
   low                = (Settings.timerPeriod - f) / TIMER1_DIVIDER;
   high               = low + G.timer1Step;
+  
   cli ();
   G.timer1PeriodFH   = fh;
   G.timer1PeriodFL   = fl;
@@ -903,11 +906,12 @@ void timerCalculate (void) {
   G.timer1UpdateFlag = true;
   sei ();
   
-  f                  = timer1Period % (G.timer2Step * TIMER2_DIVIDER);
+  f                  = G.timer1Period % (G.timer2Step * TIMER2_DIVIDER);
   fh                 = f / TIMER2_DIVIDER;
   fl                 = f % TIMER2_DIVIDER;
-  low                = (timer1Period - f) / TIMER2_DIVIDER;
+  low                = (G.timer1Period - f) / TIMER2_DIVIDER;
   high               = low + G.timer2Step;
+  
   cli ();
   G.timer2PeriodFH   = fh;
   G.timer2PeriodFL   = fl;
@@ -1559,11 +1563,14 @@ void settingsMenu (void) {
         SHOW_SERVICE_ENTRY_POINT:
         // show Timer1 period (default)
         if (vIdx == 0) {
-          valueDigits.numDigits = 10;
-          Nixie.dec2bcd (Settings.timerPeriod, &valueDigits, 8);
-          valueDigits.value[9] = 1;
-          valueDigits.comma[9] = true;
-          valueDigits.blank[8] = true;
+          valueDigits.numDigits = 11;
+          Nixie.dec2bcd (G.timer1Period * 100, &valueDigits, 9);
+          valueDigits.value[10] = 1;
+          valueDigits.comma[10] = true;
+          valueDigits.blank[9]  = true;
+          valueDigits.comma[2]  = true;
+          valueDigits.value[1]  = dec2bcdHigh(G.timer1PeriodFL);
+          valueDigits.value[0]  = dec2bcdLow(G.timer1PeriodFL);
         }
         // show Nixie tube uptime
         else if (vIdx == 1) {
