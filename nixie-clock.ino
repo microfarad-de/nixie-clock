@@ -110,8 +110,9 @@
 // pin controlling the comma
 #define COMMA_PIN 13 
 
-// DCF77 signal pin with interrupt support (should be 2 or 3 on ATmega328p)
-#define DCF_PIN 3   
+// DCF77 settings
+#define DCF_PIN        3        // DCF77 digital pin with interrupt support (should be 2 or 3 on ATmega328p)
+#define DCF_START_EDGE FALLING  // trigger the start of a DCF bit on FALLING/RISING edge of DCF_PIN
 
 // pin controlling the buzzer
 #define BUZZER_PIN 1 
@@ -346,7 +347,7 @@ void setup() {
   Brightness.initialize (EEPROM_BRIGHTNESS_ADDR, BRIGHTNESS_PIN);
 
   // initilaize the DCF77 receiver
-  Dcf.initialize (DCF_PIN, FALLING, INPUT);
+  Dcf.initialize (DCF_PIN, DCF_START_EDGE, INPUT);
   
   // reset system time
   set_system_time (0);
@@ -532,7 +533,7 @@ void loop() {
 
   // toggle the decimal point for the DCF signal indicator 
   if (Settings.dcfSyncEnabled) {  
-    Nixie.comma[1] = G.dcfSyncActive && (Dcf.lastIrqTrigger || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
+    Nixie.comma[1] = G.dcfSyncActive && ( (Dcf.lastIrqTrigger == Dcf.startEdge) || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
   }
   else {
     Nixie.comma[1] = false; 
