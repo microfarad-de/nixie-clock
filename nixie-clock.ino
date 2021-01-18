@@ -67,7 +67,7 @@
 //#include "BuildDate.h"
 
 
-//#define DEBUG_VALUES        // activate the debug values within the service menu
+#define DEBUG_VALUES        // activate the debug values within the service menu
 
 //#define SERIAL_DEBUG      // activate debug printing over RS232
 #define SERIAL_BAUD 115200  // serial baud rate
@@ -531,12 +531,33 @@ void loop() {
 
   Nixie.refresh ();
 
-  // toggle the decimal point for the DCF signal indicator 
+  // toggle the decimal point for the DCF signal indicator
+  static bool dcfSyncWasEnabled = false;;
   if (Settings.dcfSyncEnabled) {  
-    Nixie.comma[1] = G.dcfSyncActive && ( (Dcf.lastIrqTrigger == Dcf.startEdge) || !Settings.dcfSignalIndicator);  // DCF77 sync status indicator
+    // DCF77 sync status indicator
+    Nixie.comma[1] = G.dcfSyncActive && (Dcf.edge || !Settings.dcfSignalIndicator);
+    dcfSyncWasEnabled = true;
+#ifdef DCF_DEBUG_VALUES
+    static bool debugValuesWereEnabled = false;
+    if (G.menuState == SHOW_TIME) {
+      Nixie.comma[2] = G.dcfSyncActive && Dcf.debug[0];
+      Nixie.comma[3] = G.dcfSyncActive && Dcf.debug[1];
+      Nixie.comma[4] = G.dcfSyncActive && Dcf.debug[2];
+      Nixie.comma[5] = G.dcfSyncActive && Dcf.debug[3];
+      debugValuesWereEnabled = true;
+    }
+    else if (debugValuesWereEnabled) {
+      Nixie.comma[2] = false;
+      Nixie.comma[3] = false;
+      Nixie.comma[4] = false;
+      Nixie.comma[5] = false;
+      debugValuesWereEnabled = false;
+    }
+#endif
   }
-  else {
-    Nixie.comma[1] = false; 
+  else if (dcfSyncWasEnabled) {
+    Nixie.comma[1] = false;
+    dcfSyncWasEnabled = false;
   }
 
   Nixie.refresh ();
@@ -1893,8 +1914,8 @@ void settingsMenu (void) {
       G.dateDigits[3].blink = false;
       G.dateDigits[4].blink = true;
       G.dateDigits[5].blink = true; 
-      G.dateDigits[4].comma = true;
       G.dateDigits[2].comma = true;
+      G.dateDigits[4].comma = true;
       nextState   = SET_MONTH_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_DAY;
