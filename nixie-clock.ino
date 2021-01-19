@@ -67,10 +67,13 @@
 //#include "BuildDate.h"
 
 
-#define DEBUG_VALUES        // activate the debug values within the service menu
+//#define SERIAL_DEBUG  // activate debug printing over RS232
+//#define DEBUG_VALUES    // activate the debug values within the service menu
 
-//#define SERIAL_DEBUG      // activate debug printing over RS232
-#define SERIAL_BAUD 115200  // serial baud rate
+
+#ifdef SERIAL_DEBUG
+  #define SERIAL_BAUD 115200  // serial baud rate
+#endif
 
 // use these macros for printing to serial port
 #ifdef SERIAL_DEBUG  
@@ -888,8 +891,8 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   PRINTLN (measDuration, DEC);
   PRINT   ("[timerCalibrate] timeOffsetMs=");
   PRINTLN (timeOffsetMs, DEC);
-  PRINT   ("[timerCalibrate] errorPPM=");
-  PRINTLN (errorPPM, DEC);
+  PRINT   ("[timerCalibrate] drift=");
+  PRINTLN (drift, DEC);
   PRINT   ("[timerCalibrate] timerPeriod=");
   PRINTLN (Settings.timerPeriod, DEC);
 }
