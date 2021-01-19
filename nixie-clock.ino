@@ -68,7 +68,7 @@
 
 
 //#define SERIAL_DEBUG  // activate debug printing over RS232
-//#define DEBUG_VALUES    // activate the debug values within the service menu
+#define DEBUG_VALUES    // activate the debug values within the service menu
 
 
 #ifdef SERIAL_DEBUG
@@ -114,7 +114,7 @@
 #define COMMA_PIN 13 
 
 // DCF77 settings
-#define DCF_PIN        3        // DCF77 digital pin with interrupt support (should be 2 or 3 on ATmega328p)
+#define DCF_PIN        3        // DCF77 digital pin
 #define DCF_START_EDGE FALLING  // trigger the start of a DCF bit on FALLING/RISING edge of DCF_PIN
 
 // pin controlling the buzzer
@@ -445,7 +445,7 @@ void setup() {
  * Arduino main loop
  ***********************************/
 void loop() {
-  static bool cppCondition = false, blankCondition = false;
+  static bool cppWasEnabled = false, blankWasEnabled = false;
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
   
   // actions to be executed once every second
@@ -472,14 +472,14 @@ void loop() {
 
   // enable cathode poisoning prevention effect at a preset hour
   if (Settings.cathodePoisonPrevent == 1 && hour == Settings.cppStartHr && G.menuState != SET_HOUR) {
-    if (!cppCondition) {
+    if (!cppWasEnabled) {
       G.cppEffectEnabled = true;
-      cppCondition = true;
+      cppWasEnabled = true;
     }  
   }
   else {
     G.cppEffectEnabled = false;  
-    cppCondition = false;
+    cppWasEnabled = false;
   }
 
   Nixie.refresh ();
@@ -504,23 +504,23 @@ void loop() {
          ) && !G.cppEffectEnabled
        )
      ) {
-    if (!blankCondition && G.menuState == SHOW_TIME) {
+    if (!blankWasEnabled && G.menuState == SHOW_TIME) {
       G.menuState = SHOW_BLANK_E;
-      blankCondition = true;
+      blankWasEnabled = true;
     }
     // re-enable blanking after switching to the service display /*or at the change of an hour*/ 
     else if (G.menuState == SHOW_SERVICE /*|| ( G.menuState != SHOW_BLANK && G.menuState != SET_HOUR && hour != lastHour)*/ ) {
-      blankCondition = false;
+      blankWasEnabled = false;
     }
   }
   // disable blanking if blanking blankScreenMode != 4, CPP is enabled or outside the preset time intervals
   else if (G.menuState == SHOW_BLANK) {
     G.menuState = SHOW_TIME_E;
-    blankCondition = false;
+    blankWasEnabled = false;
   }
-  // ensure that blankCondition is reset after blanking period elapses, even if not in blanking mode
-  else if (blankCondition) {
-    blankCondition = false;
+  // ensure that blankWasEnabled is reset after blanking period elapses, even if not in blanking mode
+  else if (blankWasEnabled) {
+    blankWasEnabled = false;
   }
 
   Nixie.refresh ();
@@ -614,6 +614,7 @@ void eepromWriteSettings (void) {
   eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
   Brightness.eepromWrite ();
 }
+/*********/
 
 
 
@@ -761,7 +762,7 @@ void timerCallback (bool start) {
  ***********************************/
 void syncToDCF (void) {
   static bool coldStart = true;  // flag to indicate initial sync after power-up
-  static bool enabledCondition = true;
+  static bool dcfWasEnabled = true;
   static int32_t lastDelta = 0;
   uint8_t rv;
   int32_t delta, deltaMs, ms;
@@ -770,17 +771,17 @@ void syncToDCF (void) {
 
   // enable DCF77 pin interrupt
   if (Settings.dcfSyncEnabled && G.dcfSyncActive) {
-    if (!enabledCondition) {
+    if (!dcfWasEnabled) {
       Dcf.resumeReception ();
       PRINTLN ("[syncToDcf] resume");
-      enabledCondition = true;
+      dcfWasEnabled = true;
     }
   }
   else {
-    if (enabledCondition) {
+    if (dcfWasEnabled) {
       Dcf.pauseReception ();
       PRINTLN ("[syncToDcf] pause");
-      enabledCondition = false;
+      dcfWasEnabled = false;
     }  
   }
   
@@ -812,16 +813,13 @@ void syncToDCF (void) {
       Timer1.start ();
       G.lastDcfSyncTime = dcfTime;    // remember last sync time
       G.dcfSyncActive   = false;      // pause DCF77 reception
-        
+
+#ifdef DEBUG_VALUES
+      Debug.set ( 0, (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec);
+#endif
 
       // calibrate timer1 to compensate for crystal drift
       if (abs (delta) < 60 && timeSinceLastSync > 1800 && !G.manuallyAdjusted && !coldStart) {
-#ifdef DEBUG_VALUES
-        // for debugging the calibration inaccuracy issue
-        Debug.set ( 0, (int32_t)timeSinceLastSync );
-        Debug.set ( 1, (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec);
-        Debug.set ( 2, deltaMs);
-#endif
         timerCalibrate (timeSinceLastSync, deltaMs);     
       }
 
@@ -882,8 +880,10 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   
   Settings.timerPeriod += drift;
   timerCalculate ();
-  
+
 #ifdef DEBUG_VALUES
+  Debug.set ( 1, (int32_t)measDuration );
+  Debug.set ( 2, timeOffsetMs);
   Debug.set ( 3, drift);
 #endif
 
