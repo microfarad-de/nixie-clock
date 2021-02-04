@@ -68,7 +68,7 @@
 
 
 //#define SERIAL_DEBUG  // activate debug printing over RS232
-#define DEBUG_VALUES    // activate the debug values within the service menu
+//#define DEBUG_VALUES  // activate the debug values within the service menu
 
 
 #ifdef SERIAL_DEBUG
