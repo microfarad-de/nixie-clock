@@ -383,8 +383,8 @@ void setup() {
     Settings.nixieUptime    = 0;
     for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
       *SettingsLut[i].value = SettingsLut[i].defaultVal;
-      Settings.settingsResetCode = SETTINGS_RESET_CODE;
     }
+    Settings.settingsResetCode = SETTINGS_RESET_CODE;
     eepromWriteSettings ();
     PRINTLN ("[setup] settings initialized");
   }
