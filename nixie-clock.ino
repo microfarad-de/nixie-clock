@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
- * Version: 4.0.0
+ * Version: 4.1.0
  * Date:    January 2021
  */
 #define VERSION_MAJOR 4  // Major version
-#define VERSION_MINOR 0  // Minor version
+#define VERSION_MINOR 1  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -465,7 +465,7 @@ void loop() {
   wday     = G.systemTm->tm_wday;
 
   // start DCF77 reception at the specified hour
-  if (hour != lastHour && hour == Settings.dcfSyncHour) G.dcfSyncActive = true;
+  if (hour != lastHour && hour == Settings.dcfSyncHour && Settings.dcfSyncEnabled) G.dcfSyncActive = true;
 
   Nixie.refresh (); // refresh the Nixie tube display
                     // refresh method is called many times across the code to ensure smooth display operation
@@ -535,18 +535,18 @@ void loop() {
   Nixie.refresh ();
 
   // toggle the decimal point for the DCF signal indicator
-  static bool dcfSyncWasEnabled = false;;
-  if (Settings.dcfSyncEnabled) {  
+  static bool dcfSyncWasActive = false;
+  if (G.dcfSyncActive) {  
     // DCF77 sync status indicator
-    Nixie.comma[1] = G.dcfSyncActive && (Dcf.edge || !Settings.dcfSignalIndicator);
-    dcfSyncWasEnabled = true;
+    Nixie.comma[1] = Dcf.edge || !Settings.dcfSignalIndicator;
+    dcfSyncWasActive = true;
 #ifdef DCF_DEBUG_VALUES
     static bool debugValuesWereEnabled = false;
     if (G.menuState == SHOW_TIME) {
-      Nixie.comma[2] = G.dcfSyncActive && Dcf.debug[0];
-      Nixie.comma[3] = G.dcfSyncActive && Dcf.debug[1];
-      Nixie.comma[4] = G.dcfSyncActive && Dcf.debug[2];
-      Nixie.comma[5] = G.dcfSyncActive && Dcf.debug[3];
+      Nixie.comma[2] = Dcf.debug[0];
+      Nixie.comma[3] = Dcf.debug[1];
+      Nixie.comma[4] = Dcf.debug[2];
+      Nixie.comma[5] = Dcf.debug[3];
       debugValuesWereEnabled = true;
     }
     else if (debugValuesWereEnabled) {
@@ -558,9 +558,9 @@ void loop() {
     }
 #endif
   }
-  else if (dcfSyncWasEnabled) {
+  else if (dcfSyncWasActive) {
     Nixie.comma[1] = false;
-    dcfSyncWasEnabled = false;
+    dcfSyncWasActive = false;
   }
 
   Nixie.refresh ();
@@ -762,7 +762,7 @@ void timerCallback (bool start) {
  ***********************************/
 void syncToDCF (void) {
   static bool coldStart = true;  // flag to indicate initial sync after power-up
-  static bool dcfWasEnabled = true;
+  static bool dcfWasActive = true;
   static int32_t lastDelta = 0;
   uint8_t rv;
   int32_t delta, deltaMs, ms;
@@ -770,18 +770,18 @@ void syncToDCF (void) {
   time_t sysTime, dcfTime;
 
   // enable DCF77 pin interrupt
-  if (Settings.dcfSyncEnabled && G.dcfSyncActive) {
-    if (!dcfWasEnabled) {
+  if (G.dcfSyncActive) {
+    if (!dcfWasActive) {
       Dcf.resumeReception ();
       PRINTLN ("[syncToDcf] resume");
-      dcfWasEnabled = true;
+      dcfWasActive = true;
     }
   }
   else {
-    if (dcfWasEnabled) {
+    if (dcfWasActive) {
       Dcf.pauseReception ();
       PRINTLN ("[syncToDcf] pause");
-      dcfWasEnabled = false;
+      dcfWasActive = false;
     }  
   }
   
@@ -1100,12 +1100,12 @@ void powerSave (void) {
         power_adc_disable ();
         cli ();
         WDTCSR |= _BV(WDCE) | _BV(WDE);
-        WDTCSR = _BV(WDIE) | _BV(WDP2) | _BV(WDP1); // Enable watchdog interrupt, set to 1s (see Datasheet Section 15.9.2)
+        WDTCSR = _BV(WDIE) | _BV(WDP2) | _BV(WDP1);  // Enable watchdog interrupt, set to 1s (see Datasheet Section 15.9.2)
         sei ();
         set_sleep_mode (SLEEP_MODE_PWR_DOWN);
         mode = DEEP_SLEEP;
-        G.dcfSyncActive = true;        // time must be synced to DCF77 upon power re-connect
-        G.manuallyAdjusted = true;     // inaccurate time-keeping should never be used for timer calibration
+        G.dcfSyncActive = Settings.dcfSyncEnabled;  // time must be synced to DCF77 upon power re-connect
+        G.manuallyAdjusted = true;                  // inaccurate time-keeping should never be used for timer calibration
       }  
     }
     // Deep Sleep:
@@ -1182,7 +1182,7 @@ void reorderMenu (int8_t menuIdx) {
   set_system_time (sysTime); \
   updateDigits (); \
   sei (); \
-  G.dcfSyncActive = true; \
+  G.dcfSyncActive = Settings.dcfSyncEnabled; \
   G.manuallyAdjusted = true; \
 }
 /*********/
@@ -1894,7 +1894,7 @@ void settingsMenu (void) {
         sysTime = mktime (t);
         set_system_time (sysTime);
         updateDigits ();
-        G.dcfSyncActive = true;
+        G.dcfSyncActive = Settings.dcfSyncEnabled;
         G.manuallyAdjusted = true;
       }
       // button 1 - falling edge --> start Timer1
