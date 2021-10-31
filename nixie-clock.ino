@@ -144,7 +144,7 @@
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
 #define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
 #ifdef DEBUG_VALUES
-  #define NUM_DEBUG_VALUES     10             // total number of debug values shown in the service menu
+  #define NUM_DEBUG_VALUES     5             // total number of debug values shown in the service menu
   #define NUM_DEBUG_DIGITS     7             // number of digits for the debug values shown in the service menu  
 #else 
   #define NUM_DEBUG_VALUES     0
@@ -815,7 +815,8 @@ void syncToDCF (void) {
       G.dcfSyncActive   = false;      // pause DCF77 reception
 
 #ifdef DEBUG_VALUES
-      Debug.set ( 0, (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec);
+      Debug.set ( 0, (int32_t)Dcf.currentTm.tm_mday*10000 + ((int32_t)Dcf.currentTm.tm_mon + 1)*100 + ((int32_t)Dcf.currentTm.tm_year - 100));
+      Debug.set ( 1, (int32_t)Dcf.currentTm.tm_hour*10000 + (int32_t)Dcf.currentTm.tm_min*100 + (int32_t)Dcf.currentTm.tm_sec);
 #endif
 
       // calibrate timer1 to compensate for crystal drift
@@ -882,9 +883,9 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   timerCalculate ();
 
 #ifdef DEBUG_VALUES
-  Debug.set ( 1, (int32_t)measDuration );
-  Debug.set ( 2, timeOffsetMs);
-  Debug.set ( 3, drift);
+  Debug.set ( 2, (int32_t)measDuration );
+  Debug.set ( 3, timeOffsetMs);
+  Debug.set ( 4, drift);
 #endif
 
   PRINT   ("[timerCalibrate] measDuration=");
@@ -939,15 +940,6 @@ void timerCalculate (void) {
   G.timer2PeriodHigh = high;
   G.timer2UpdateFlag = true;
   sei ();
-  
-#ifdef DEBUG_VALUES
-  Debug.set ( 4, G.timer1PeriodLow);
-  Debug.set ( 5, G.timer1PeriodFH);
-  Debug.set ( 6, G.timer1PeriodFL);
-  Debug.set ( 7, G.timer2PeriodLow);
-  Debug.set ( 8, G.timer2PeriodFH);
-  Debug.set ( 9, G.timer2PeriodFL);
-#endif
 }
 /*********/
 
