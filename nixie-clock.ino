@@ -46,7 +46,7 @@
  */
 #define VERSION_MAJOR 4  // Major version
 #define VERSION_MINOR 1  // Minor version
-#define VERSION_MAINT 0  // Maintenance version
+#define VERSION_MAINT 1  // Maintenance version
 
 
 
@@ -1321,7 +1321,10 @@ void settingsMenu (void) {
     }
     else if (Alarm.alarm || Alarm.snoozing) {
       // button 1 or 2 - long press --> reset alarm
-      if (Button[1].longPress () || Button[2].longPress ()) Alarm.resetAlarm ();
+      if (Button[1].longPress () || Button[2].longPress ()) {
+        Nixie.blinkOnce ();
+        Alarm.resetAlarm ();
+      }
       brightnessEnable = false;
     }
     else if ( G.menuState == SHOW_ALARM) {
@@ -1374,6 +1377,7 @@ void settingsMenu (void) {
     // button 0 - long press --> reset alarm or change state: returnState 
     if (Button[0].longPress ()) {
       if (Alarm.alarm || Alarm.snoozing) {
+        Nixie.blinkOnce ();
         Alarm.resetAlarm ();  // stop the alarm clock
       }
       else {
