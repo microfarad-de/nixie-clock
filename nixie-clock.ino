@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Version: 4.2.0
+ * Version: 5.0.0
  * Date:    February 05, 2023
  */
-#define VERSION_MAJOR 4  // Major version
-#define VERSION_MINOR 2  // Minor version
+#define VERSION_MAJOR 5  // Major version
+#define VERSION_MINOR 0  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -68,7 +68,7 @@
 
 
 //#define SERIAL_DEBUG  // activate debug printing over RS232
-//#define DEBUG_VALUES  // activate the debug values within the service menu
+#define DEBUG_VALUES  // activate the debug values within the service menu
 
 
 #ifdef SERIAL_DEBUG
@@ -142,7 +142,7 @@
 #define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
-#define SETTINGS_LUT_SIZE      15            // size of the settings lookup table
+#define SETTINGS_LUT_SIZE      17            // size of the settings lookup table
 #ifdef DEBUG_VALUES
   #define NUM_DEBUG_VALUES     3             // total number of debug values shown in the service menu
   #define NUM_DEBUG_DIGITS     7             // number of digits for the debug values shown in the service menu
@@ -188,7 +188,9 @@ class DebugClass {
 struct Settings_t {
   uint32_t timerPeriod;           // virtual period of Timer1/Timer2 (equivalent to 1 second)
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
-  uint8_t  reserved[4];           // reserved for future use
+  uint8_t  reserved[2];           // reserved for future use
+  int8_t   utcTimeZone;           // time difference relative to UTC
+  bool     dstEnabled;            // daylight saving time (DST) is enabled
   bool     dcfSyncEnabled;        // enables DCF77 synchronization feature
   bool     dcfSignalIndicator;    // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
   uint8_t  dcfSyncHour;           // hour of day when DCF77 sync shall start
@@ -226,21 +228,23 @@ const struct SettingsLut_t {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] =
 {
-  { (int8_t *)&Settings.blankScreenMode,        1, 1,     0,    4,     2 }, // screen blanking (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
-  { (int8_t *)&Settings.blankScreenStartHr,     1, 2,     0,   23,     8 }, //  - start hour
-  { (int8_t *)&Settings.blankScreenFinishHr,    1, 3,     0,   23,    17 }, //  - finish hour
-  { (int8_t *)&Settings.blankScreenMode2,       2, 1,     0,    3,     1 }, // screen blanking (second profile) (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends)
-  { (int8_t *)&Settings.blankScreenStartHr2,    2, 2,     0,   23,     2 }, //  - start hour
-  { (int8_t *)&Settings.blankScreenFinishHr2,   2, 3,     0,   23,     5 }, //  - finish hour
-  { (int8_t *)&Settings.cathodePoisonPrevent,   3, 1,     0,    3,     3 }, // cathode poisoning prevention (0 = off, 1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
-  { (int8_t *)&Settings.cppStartHr,             3, 2,     0,   23,     4 }, //  - start hour
-  { (int8_t *)&Settings.brightnessAutoAdjust,   4, 1, false, true,  true }, // brightness auto adjust
-  { (int8_t *)&Settings.brightnessBoost,        4, 2, false, true, false }, //  - brighntess boost
-  { (int8_t *)&Settings.dcfSyncEnabled,         5, 1, false, true,  true }, // DCF sync
-  { (int8_t *)&Settings.dcfSignalIndicator,     5, 2, false, true,  true }, //  - signal indicator
-  { (int8_t *)&Settings.dcfSyncHour,            5, 3,     0,   23,     3 }, //  - sync hour
-  { (int8_t *)&Settings.clockDriftCorrect,      6, 1,   -99,   99,     0 }, // manual clock drift correction
-  { (int8_t *)&Settings.weekStartDay,           6, 2,     1,    7,     1 }  // start day of the week (1 = Monday, 7 = Sunday)
+  { (int8_t *)&Settings.utcTimeZone,            1, 1,    -5,    5,     1 }, // time zone relative to UTC
+  { (int8_t *)&Settings.dstEnabled,             1, 2, false, true,  true }, // daylight saving time (DST)
+  { (int8_t *)&Settings.weekStartDay,           1, 3,     1,    7,     1 }, // start day of the week (1 = Monday, 7 = Sunday)
+  { (int8_t *)&Settings.clockDriftCorrect,      1, 4,   -99,   99,     0 }, // manual clock drift correction
+  { (int8_t *)&Settings.dcfSyncEnabled,         2, 1, false, true,  true }, // DCF sync
+  { (int8_t *)&Settings.dcfSignalIndicator,     2, 2, false, true,  true }, //  - signal indicator
+  { (int8_t *)&Settings.dcfSyncHour,            2, 3,     0,   23,     3 }, //  - sync hour
+  { (int8_t *)&Settings.blankScreenMode,        3, 1,     0,    4,     2 }, // screen blanking (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
+  { (int8_t *)&Settings.blankScreenStartHr,     3, 2,     0,   23,     8 }, //  - start hour
+  { (int8_t *)&Settings.blankScreenFinishHr,    3, 3,     0,   23,    17 }, //  - finish hour
+  { (int8_t *)&Settings.blankScreenMode2,       4, 1,     0,    3,     1 }, // screen blanking (second profile) (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends)
+  { (int8_t *)&Settings.blankScreenStartHr2,    4, 2,     0,   23,     2 }, //  - start hour
+  { (int8_t *)&Settings.blankScreenFinishHr2,   4, 3,     0,   23,     5 }, //  - finish hour
+  { (int8_t *)&Settings.cathodePoisonPrevent,   5, 1,     0,    3,     3 }, // cathode poisoning prevention (0 = off, 1 = on preset time, 2 = "Slot Machine" every minute, 3 = "Slot Machine" every 10 min)
+  { (int8_t *)&Settings.cppStartHr,             5, 2,     0,   23,     4 }, //  - start hour
+  { (int8_t *)&Settings.brightnessAutoAdjust,   6, 1, false, true,  true }, // brightness auto adjust
+  { (int8_t *)&Settings.brightnessBoost,        6, 2, false, true, false }  //  - brighntess boost
 };
 
 /*
@@ -271,10 +275,11 @@ struct G_t {
   volatile uint8_t timer2SecCounter   = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
   volatile uint8_t timer2TenthCounter = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
   time_t   systemTime                 = 0;     // current system time
-  tm       *systemTm                  = NULL;  // pointer to the current system time structure
+  tm       *localTm                   = NULL;  // pointer to the current local time structure
+  bool     dstActive                  = false; // daylight saving time is currently active
   NixieDigit_s timeDigits[NIXIE_NUM_TUBES];    // stores the Nixie display digit values of the current time
   NixieDigit_s dateDigits[NIXIE_NUM_TUBES];    // stores the Nixie display digit values of the current date
-  MenuState_e   menuState     = SHOW_TIME_E;   // state of the menu navigation state machine
+  MenuState_e  menuState     = SHOW_TIME_E;    // state of the menu navigation state machine
 #ifdef SERIAL_DEBUG
   volatile uint8_t printTickCount     = 0;     // incremented by the Timer1 ISR every second
 #endif
@@ -305,6 +310,8 @@ void eepromWriteSettings (void);
 void timer1ISR (void);
 void timer2ISR (void);
 void timerCallback (bool);
+time_t convertToLocalTime (time_t time);
+time_t convertToDcfTime (time_t time);
 void syncToDCF (void);
 void timerCalibrate (time_t, int32_t);
 void timerCalculate (void);
@@ -324,7 +331,6 @@ void settingsMenu (void);
  ***********************************/
 void setup() {
   uint8_t i;
-  time_t sysTime;
   MCUSR = 0;      // clear MCU status register
   wdt_disable (); // and disable watchdog
 
@@ -357,8 +363,16 @@ void setup() {
 
   // reset system time
   set_system_time (0);
-  sysTime = time (NULL);
-  G.systemTm = localtime (&sysTime);
+  G.systemTime = time (NULL);
+  G.localTm    = localtime (&G.systemTime);
+  G.localTm->tm_sec   = 0;    // seconds after the minute - [ 0 to 59 ]
+  G.localTm->tm_min   = 0;    // minutes after the hour - [ 0 to 59 ]
+  G.localTm->tm_hour  = 0;    // hours since midnight - [ 0 to 23 ]
+  G.localTm->tm_mday  = 1;    // day of the month - [ 1 to 31 ]
+  G.localTm->tm_mon   = 0;    // months since January - [ 0 to 11 ]
+  G.localTm->tm_year  = 101;  // years since 1900
+  G.systemTime = mktime (G.localTm);
+  set_system_time (G.systemTime);
 
   // retrieve system settings period from EEOROM
   eepromRead (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
@@ -450,22 +464,24 @@ void setup() {
 void loop() {
   static bool cppWasEnabled = false, blankWasEnabled = false;
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
+  time_t locTime;
 
   // actions to be executed once every second
   if (G.timer1TickFlag) {
     cli();
     G.systemTime     = time (NULL);    // get the current time
     sei();
-    G.systemTm       = localtime (&G.systemTime);
+    locTime          = convertToLocalTime (G.systemTime);
+    G.localTm        = localtime (&locTime);
     G.secTickMsStamp = millis ();
     updateDigits ();                      // update the Nixie display digits
     G.timer1TickFlag = false;
   }
 
   lastHour = hour;
-  hour     = G.systemTm->tm_hour;
-  minute   = G.systemTm->tm_min;
-  wday     = G.systemTm->tm_wday;
+  hour     = G.localTm->tm_hour;
+  minute   = G.localTm->tm_min;
+  wday     = G.localTm->tm_wday;
 
   // start DCF77 reception at the specified hour
   if (hour != lastHour && hour == Settings.dcfSyncHour && Settings.dcfSyncEnabled) G.dcfSyncActive = true;
@@ -756,7 +772,24 @@ void timerCallback (bool start) {
 
 
 
+/***********************************
+ * Convert DCF time to current time zone
+ * The received DCF time corresponds to UTC+1 with DST enabled.
+ * Thus, we need to subtract 1 hour as well as the DST offset in order to get UTC.
+ ***********************************/
+time_t convertToLocalTime (time_t time) {
+    return time + (Settings.utcTimeZone - 1 - (!Settings.dstEnabled) * G.dstActive) * 3600;
+}
+/*********/
 
+
+/***********************************
+ * Convert local time back to DCF time
+ ***********************************/
+time_t convertToDcfTime (time_t time) {
+    return time - (Settings.utcTimeZone - 1 - (!Settings.dstEnabled) * G.dstActive) * 3600;
+}
+/*********/
 
 
 /***********************************
@@ -800,7 +833,7 @@ void syncToDCF (void) {
     dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp
 
     delta   = (int32_t)(sysTime - dcfTime);           // time difference between the system time and DCF77 time in seconds
-    deltaMs = delta * 1000  + ms;                     // above time difference in milliseconds
+    deltaMs = delta * 1000 + ms;                      // above time difference in milliseconds
     timeSinceLastSync = dcfTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
 
     // if no big time deviation was detected or
@@ -814,9 +847,9 @@ void syncToDCF (void) {
       set_system_time (dcfTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
       sei ();
       Timer1.start ();
-      G.lastDcfSyncTime = dcfTime;      // remember last sync time
-      G.lastDcfSyncTm   = Dcf.currentTm;
-      G.dcfSyncActive   = false;        // pause DCF77 reception
+      G.dstActive       = Dcf.currentTm.tm_isdst; // apply the new daylight saving time status
+      G.lastDcfSyncTime = dcfTime;                // remember last sync time
+      G.dcfSyncActive   = false;                  // pause DCF77 reception
 
       // calibrate timer1 to compensate for crystal drift
       if (abs (delta) < 60 && timeSinceLastSync > 1800 && !G.manuallyAdjusted && !coldStart) {
@@ -951,23 +984,23 @@ void updateDigits () {
   static int8_t lastMin = 0;
 
   // check whether current state requires time or date display
-  G.timeDigits[0].value = dec2bcdLow  (G.systemTm->tm_sec);
-  G.timeDigits[1].value = dec2bcdHigh (G.systemTm->tm_sec);
-  G.timeDigits[2].value = dec2bcdLow  (G.systemTm->tm_min);
-  G.timeDigits[3].value = dec2bcdHigh (G.systemTm->tm_min);
-  G.timeDigits[4].value = dec2bcdLow  (G.systemTm->tm_hour);
-  G.timeDigits[5].value = dec2bcdHigh (G.systemTm->tm_hour);
-  G.dateDigits[0].value = dec2bcdLow  (G.systemTm->tm_year);
-  G.dateDigits[1].value = dec2bcdHigh (G.systemTm->tm_year);
-  G.dateDigits[2].value = dec2bcdLow  (G.systemTm->tm_mon + 1);
-  G.dateDigits[3].value = dec2bcdHigh (G.systemTm->tm_mon + 1);
-  G.dateDigits[4].value = dec2bcdLow  (G.systemTm->tm_mday);
-  G.dateDigits[5].value = dec2bcdHigh (G.systemTm->tm_mday);
+  G.timeDigits[0].value = dec2bcdLow  (G.localTm->tm_sec);
+  G.timeDigits[1].value = dec2bcdHigh (G.localTm->tm_sec);
+  G.timeDigits[2].value = dec2bcdLow  (G.localTm->tm_min);
+  G.timeDigits[3].value = dec2bcdHigh (G.localTm->tm_min);
+  G.timeDigits[4].value = dec2bcdLow  (G.localTm->tm_hour);
+  G.timeDigits[5].value = dec2bcdHigh (G.localTm->tm_hour);
+  G.dateDigits[0].value = dec2bcdLow  (G.localTm->tm_year);
+  G.dateDigits[1].value = dec2bcdHigh (G.localTm->tm_year);
+  G.dateDigits[2].value = dec2bcdLow  (G.localTm->tm_mon + 1);
+  G.dateDigits[3].value = dec2bcdHigh (G.localTm->tm_mon + 1);
+  G.dateDigits[4].value = dec2bcdLow  (G.localTm->tm_mday);
+  G.dateDigits[5].value = dec2bcdHigh (G.localTm->tm_mday);
 
 
   if (G.menuState == SHOW_TIME) {
     // trigger Nixie digit "Slot Machine" effect
-    if (G.systemTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && G.timeDigits[2].value == 0))) {
+    if (G.localTm->tm_min != lastMin && (Settings.cathodePoisonPrevent == 2 || (Settings.cathodePoisonPrevent == 3 && G.timeDigits[2].value == 0))) {
       Nixie.slotMachine();
     }
     // trigger the cathode poisoning prevention routine
@@ -976,7 +1009,7 @@ void updateDigits () {
       Nixie.cathodePoisonPrevent ();
     }
   }
-  lastMin = G.systemTm->tm_min;
+  lastMin = G.localTm->tm_min;
 }
 /*********/
 
@@ -1167,9 +1200,10 @@ void reorderMenu (int8_t menuIdx) {
  ***********************************/
 #define SET_TIME_DATE( EXPR ) { \
   cli (); \
-  t = G.systemTm; \
+  t = G.localTm; \
   EXPR; \
   sysTime = mktime (t); \
+  sysTime = convertToDcfTime (sysTime); \
   set_system_time (sysTime); \
   updateDigits (); \
   sei (); \
@@ -1183,7 +1217,7 @@ void reorderMenu (int8_t menuIdx) {
  * Calculate the week day
  ***********************************/
 uint8_t weekDay (void) {
-  return (G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
+  return (G.localTm->tm_wday == 0 ? 7 : G.localTm->tm_wday);
 }
 /*********/
 
@@ -1192,7 +1226,7 @@ uint8_t weekDay (void) {
  * Calculate the current calendar week
  ***********************************/
 int8_t calendarWeek (void) {
-  return (int8_t)week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
+  return (int8_t)week_of_year (G.localTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
 }
 /*********/
 
@@ -1249,6 +1283,7 @@ void settingsMenu (void) {
   int8_t val8;
   int16_t val16;
   time_t sysTime;
+  time_t locTime;
   tm *t;
   uint32_t ts = millis ();
 
@@ -1611,6 +1646,8 @@ void settingsMenu (void) {
         }
         // Show the last DCF sync date
         else if (vIdx == 2) {
+          locTime = convertToLocalTime(G.lastDcfSyncTime);
+          localtime_r(&locTime, &G.lastDcfSyncTm);
           Nixie.setDigits (valueDigits, 8);
           valueDigits[7].value = 3;
           valueDigits[7].comma = true;
@@ -1626,6 +1663,8 @@ void settingsMenu (void) {
         }
         // Show the last DCF sync time
         else if (vIdx == 3) {
+          locTime = convertToLocalTime(G.lastDcfSyncTime);
+          localtime_r(&locTime, &G.lastDcfSyncTm);
           Nixie.setDigits (valueDigits, 8);
           valueDigits[7].value = 4;
           valueDigits[7].comma = true;
@@ -1914,7 +1953,7 @@ void settingsMenu (void) {
         Timer1.stop ();
         Timer1.restart ();
         sei ();
-        t = G.systemTm;
+        t = G.localTm;
         t->tm_sec = 0;
         sysTime = mktime (t);
         set_system_time (sysTime);
@@ -2022,7 +2061,7 @@ void settingsMenu (void) {
       else if (Button[2].pressed) {
         Nixie.resetBlinking();
         if (ts - scrollTs >= scrollDelay) {
-          SET_TIME_DATE( t->tm_year--; if (t->tm_year < 100) t->tm_year = 100; );
+          SET_TIME_DATE( t->tm_year--; if (t->tm_year < 101) t->tm_year = 101; );
           scrollTs = ts;
         }
       }
