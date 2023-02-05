@@ -312,7 +312,9 @@ void updateDigits (void);
 void adcRead (void);
 void powerSave (void);
 void reorderMenu (int8_t);
-uint8_t calendarWeek (void);
+uint8_t weekDay (void);
+int8_t calendarWeek (void);
+uint8_t calendarWeekValidate (void);
 void settingsMenu (void);
 
 
@@ -1177,38 +1179,40 @@ void reorderMenu (int8_t menuIdx) {
 /*********/
 
 
-
 /***********************************
- * Code snipped for calculating the week day
+ * Calculate the week day
  ***********************************/
-#define WEEK_DAY() \
-  (uint8_t)(G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
+uint8_t weekDay (void) {
+  return (G.systemTm->tm_wday == 0 ? 7 : G.systemTm->tm_wday);
+}
 /*********/
 
-
-/***********************************
- * Code snipped for calculating the calendar week
- ***********************************/
-#define CALENDAR_WEEK() \
-  (int8_t)week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
-/*********/
 
 /***********************************
  * Calculate the current calendar week
  ***********************************/
-uint8_t calendarWeek (void) {
-  int8_t week = CALENDAR_WEEK();
-    while (week < 1) {
+int8_t calendarWeek (void) {
+  return (int8_t)week_of_year (G.systemTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
+}
+/*********/
+
+/***********************************
+ * Validate the calendar week adjustment
+ ***********************************/
+uint8_t calendarWeekValidate (void) {
+  int8_t week = calendarWeek ();
+  while (week < 1) {
     Settings.calWeekAdjust++;
-    week = CALENDAR_WEEK();
+    week = calendarWeek ();
   }
   while (week > 53) {
     Settings.calWeekAdjust--;
-    week = CALENDAR_WEEK();
+    week = calendarWeek ();
   }
   return (uint8_t)week;
 }
 /*********/
+
 
 
 #define SCROLL_LUT_SIZE   18    // digit scrolling lookup dable size
@@ -1445,12 +1449,12 @@ void settingsMenu (void) {
     case SHOW_WEEK_E:
       Nixie.resetDigits (valueDigits, VALUE_DIGITS_SIZE);
       Nixie.setDigits (valueDigits, NIXIE_NUM_TUBES);
-      valU8 = calendarWeek ();
+      valU8 = (uint8_t) (calendarWeek () > 0 ? calendarWeek () : 0);
       valueDigits[0].value = dec2bcdLow (valU8);
       valueDigits[1].value = dec2bcdHigh (valU8);
       valueDigits[2].blank = true;
       valueDigits[3].blank = true;
-      valueDigits[4].value = WEEK_DAY();
+      valueDigits[4].value = weekDay();
       valueDigits[5].blank = true;
       nextState   = SHOW_TIME_E;
       returnState = SET_WEEK_E;
@@ -2028,14 +2032,14 @@ void settingsMenu (void) {
     case SET_WEEK_E:
       Nixie.resetDigits (valueDigits, VALUE_DIGITS_SIZE);
       Nixie.setDigits (valueDigits, NIXIE_NUM_TUBES);
-      valU8 = calendarWeek ();
+      valU8 = calendarWeekValidate ();
       valueDigits[0].blink = true;
       valueDigits[1].blink = true;
       valueDigits[0].value = dec2bcdLow (valU8);
       valueDigits[1].value = dec2bcdHigh (valU8);
       valueDigits[2].blank = true;
       valueDigits[3].blank = true;
-      valueDigits[4].value = WEEK_DAY();
+      valueDigits[4].value = weekDay();
       valueDigits[5].blank = true;
       nextState   = SET_HOUR_E;
       returnState = SHOW_WEEK_E;
@@ -2046,7 +2050,7 @@ void settingsMenu (void) {
         Nixie.resetBlinking();
         if (ts - scrollTs >= scrollDelay) {
           Settings.calWeekAdjust++;
-          valU8 = calendarWeek ();
+          valU8 = calendarWeekValidate ();
           valueDigits[0].value = dec2bcdLow (valU8);
           valueDigits[1].value = dec2bcdHigh (valU8);
           scrollTs = ts;
@@ -2057,7 +2061,7 @@ void settingsMenu (void) {
         Nixie.resetBlinking();
         if (ts - scrollTs >= scrollDelay) {
           Settings.calWeekAdjust--;
-          valU8 = calendarWeek ();
+          valU8 = calendarWeekValidate ();
           valueDigits[0].value = dec2bcdLow (valU8);
           valueDigits[1].value = dec2bcdHigh (valU8);
           scrollTs = ts;
