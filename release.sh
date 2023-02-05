@@ -22,6 +22,8 @@ rm -rf "$file_name.ino-e"
 
 rm -rf "$file_name-"*"-full"*
 
+make clean
+
 if [[ "$option" != "clean" ]]; then
   zip -r "$file_name-$version-full.zip" . -x '*.git*' '*.vscode*' '*private*' '*build-*' '*.DS_Store*'
 fi
