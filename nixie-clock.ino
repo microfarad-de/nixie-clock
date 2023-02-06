@@ -190,7 +190,7 @@ struct Settings_t {
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
   uint8_t  reserved[2];           // reserved for future use
   int8_t   utcTimeZone;           // time difference relative to UTC
-  bool     dstEnabled;            // daylight saving time (DST) is enabled
+  int8_t   dstEnabled;            // daylight saving time (DST) is enabled
   bool     dcfSyncEnabled;        // enables DCF77 synchronization feature
   bool     dcfSignalIndicator;    // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
   uint8_t  dcfSyncHour;           // hour of day when DCF77 sync shall start
@@ -228,8 +228,8 @@ const struct SettingsLut_t {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] =
 {
-  { (int8_t *)&Settings.utcTimeZone,            1, 1,    -5,    5,     1 }, // time zone relative to UTC
-  { (int8_t *)&Settings.dstEnabled,             1, 2, false, true,  true }, // daylight saving time (DST)
+  { (int8_t *)&Settings.utcTimeZone,            1, 1,   -11,   14,     1 }, // time zone relative to UTC
+  { (int8_t *)&Settings.dstEnabled,             1, 2,     0,    2,     2 }, // daylight saving time (0 = disabled, 1 = enabled, 2 = automatic)
   { (int8_t *)&Settings.weekStartDay,           1, 3,     1,    7,     1 }, // start day of the week (1 = Monday, 7 = Sunday)
   { (int8_t *)&Settings.clockDriftCorrect,      1, 4,   -99,   99,     0 }, // manual clock drift correction
   { (int8_t *)&Settings.dcfSyncEnabled,         2, 1, false, true,  true }, // DCF sync
@@ -274,7 +274,7 @@ struct G_t {
   volatile bool    timer1TickFlag     = false; // flag is set every second by the Timer1 ISR
   volatile uint8_t timer2SecCounter   = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
   volatile uint8_t timer2TenthCounter = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
-  time_t   systemTime                 = 0;     // current system time
+  time_t   systemTime                 = 0;     // current system time (UTC)
   tm       *localTm                   = NULL;  // pointer to the current local time structure
   bool     dstActive                  = false; // daylight saving time is currently active
   NixieDigit_s timeDigits[NIXIE_NUM_TUBES];    // stores the Nixie display digit values of the current time
@@ -311,7 +311,7 @@ void timer1ISR (void);
 void timer2ISR (void);
 void timerCallback (bool);
 time_t convertToLocalTime (time_t time);
-time_t convertToDcfTime (time_t time);
+time_t convertToUtcTime (time_t time);
 void syncToDCF (void);
 void timerCalibrate (time_t, int32_t);
 void timerCalculate (void);
@@ -771,23 +771,40 @@ void timerCallback (bool start) {
 /*********/
 
 
-
 /***********************************
- * Convert DCF time to current time zone
- * The received DCF time corresponds to UTC+1 with DST enabled.
- * Thus, we need to subtract 1 hour as well as the DST offset in order to get UTC.
+ * Get the daylight saving time offset
  ***********************************/
-time_t convertToLocalTime (time_t time) {
-    return time + (Settings.utcTimeZone - 1 - (!Settings.dstEnabled) * G.dstActive) * 3600;
+inline int8_t getDstOffset (void) {
+  // Automatic DST
+  if (Settings.dstEnabled == 2) {
+    return G.dstActive;
+  }
+  // Manual DST
+  else {
+    return Settings.dstEnabled;
+  }
 }
 /*********/
 
 
 /***********************************
- * Convert local time back to DCF time
+ * Convert UTC time to local time
+ * The received DCF time corresponds to UTC+1 with DST enabled.
+ * Thus, we need to subtract 1 hour as well as the DST offset in order to get UTC.
  ***********************************/
-time_t convertToDcfTime (time_t time) {
-    return time - (Settings.utcTimeZone - 1 - (!Settings.dstEnabled) * G.dstActive) * 3600;
+time_t convertToLocalTime (time_t time) {
+  int8_t dst = getDstOffset ();
+  return time + (Settings.utcTimeZone + dst) * (int32_t)3600;
+}
+/*********/
+
+
+/***********************************
+ * Convert local time back to UTC time
+ ***********************************/
+time_t convertToUtcTime (time_t time) {
+  int8_t dst = getDstOffset ();
+  return time - (Settings.utcTimeZone + dst) * (int32_t)3600;
 }
 /*********/
 
@@ -803,7 +820,7 @@ void syncToDCF (void) {
   uint8_t rv;
   int32_t delta, deltaMs, ms;
   time_t timeSinceLastSync;
-  time_t sysTime, dcfTime;
+  time_t sysTime, dcfTime, utcTime;
 
   // enable DCF77 pin interrupt
   if (G.dcfSyncActive) {
@@ -831,10 +848,11 @@ void syncToDCF (void) {
     ms      = millis () - G.secTickMsStamp;  // milliseconds elapsed since the last full second
     sysTime = G.systemTime;                  // get the current system time
     dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp
+    utcTime = dcfTime - (1 + Dcf.currentTm.tm_isdst) * (int32_t)3600;  // convert to UTC (DCF timezone is UTC+1 or UTC+2 with DST)
 
-    delta   = (int32_t)(sysTime - dcfTime);           // time difference between the system time and DCF77 time in seconds
+    delta   = (int32_t)(sysTime - utcTime);           // time difference between the system time and DCF77 time in seconds
     deltaMs = delta * 1000 + ms;                      // above time difference in milliseconds
-    timeSinceLastSync = dcfTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
+    timeSinceLastSync = utcTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
 
     // if no big time deviation was detected or
     // two consecutive DCF77 timestamps produce a similar time deviation
@@ -844,11 +862,11 @@ void syncToDCF (void) {
       Timer1.stop ();
       Timer1.restart ();              // reset the beginning of a second
       cli ();
-      set_system_time (dcfTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
+      set_system_time (utcTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
       sei ();
       Timer1.start ();
       G.dstActive       = Dcf.currentTm.tm_isdst; // apply the new daylight saving time status
-      G.lastDcfSyncTime = dcfTime;                // remember last sync time
+      G.lastDcfSyncTime = utcTime;                // remember last sync time
       G.dcfSyncActive   = false;                  // pause DCF77 reception
 
       // calibrate timer1 to compensate for crystal drift
@@ -1203,7 +1221,7 @@ void reorderMenu (int8_t menuIdx) {
   t = G.localTm; \
   EXPR; \
   sysTime = mktime (t); \
-  sysTime = convertToDcfTime (sysTime); \
+  sysTime = convertToUtcTime (sysTime); \
   set_system_time (sysTime); \
   updateDigits (); \
   sei (); \
