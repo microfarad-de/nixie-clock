@@ -1076,7 +1076,7 @@ void adcRead (void) {
     }
     // process button values
     else {
-      avgVal[chanIdx] = (avgVal[chanIdx] * 15 + (int32_t)adcVal) >> 4;  // IIR low-pass filtering for button debouncing
+      avgVal[chanIdx] = (avgVal[chanIdx] * 31 + (int32_t)adcVal) >> 5;  // IIR low-pass filtering for button debouncing
       if (avgVal[chanIdx] < 400) {
         if (Button[chanIdx].pressed == false) Nixie.resetBlinking();    // synchronize digit blinking with the rising edge of a button press
         Button[chanIdx].press ();
