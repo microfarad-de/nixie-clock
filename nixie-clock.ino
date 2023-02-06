@@ -90,7 +90,7 @@
 
 #ifdef NIXIE_UPTIME_RESET
   // reset the Nixie tube uptime to this value in seconds upon booting for the very first time
-  #define NIXIE_UPTIME_RESET_VALUE  ((uint32_t)0*3600)
+  #define NIXIE_UPTIME_RESET_VALUE  ((uint32_t)0*ONE_HOUR)
 #endif
 
 // upon the absence of this string in EEPROM all the settings will be reset to default
@@ -362,8 +362,7 @@ void setup() {
   Dcf.initialize (DCF_PIN, DCF_START_EDGE, INPUT);
 
   // reset system time
-  set_system_time (0);
-  G.systemTime = time (NULL);
+  G.systemTime = 0;
   G.localTm    = localtime (&G.systemTime);
   G.localTm->tm_sec   = 0;    // seconds after the minute - [ 0 to 59 ]
   G.localTm->tm_min   = 0;    // minutes after the hour - [ 0 to 59 ]
@@ -371,6 +370,7 @@ void setup() {
   G.localTm->tm_mday  = 1;    // day of the month - [ 1 to 31 ]
   G.localTm->tm_mon   = 0;    // months since January - [ 0 to 11 ]
   G.localTm->tm_year  = 101;  // years since 1900
+  G.localTm->tm_isdst = 0;
   G.systemTime = mktime (G.localTm);
   set_system_time (G.systemTime);
 
@@ -788,7 +788,7 @@ inline int8_t getDstOffset (void) {
  ***********************************/
 time_t convertToLocalTime (time_t time) {
   int8_t dst = getDstOffset ();
-  return time + (Settings.timeZone + dst) * (int32_t)3600;
+  return time + (Settings.timeZone + dst) * (int32_t)ONE_HOUR;
 }
 /*********/
 
@@ -798,7 +798,7 @@ time_t convertToLocalTime (time_t time) {
  ***********************************/
 time_t convertToUtcTime (time_t time) {
   int8_t dst = getDstOffset ();
-  return time - (Settings.timeZone + dst) * (int32_t)3600;
+  return time - (Settings.timeZone + dst) * (int32_t)ONE_HOUR;
 }
 /*********/
 
@@ -841,8 +841,8 @@ void syncToDcf (void) {
   if (G.dcfSyncActive && rv == 0) {
     ms      = millis () - G.secTickMsStamp;  // milliseconds elapsed since the last full second
     sysTime = G.systemTime;                  // get the current system time
-    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp
-    utcTime = dcfTime - (1 + Dcf.currentTm.tm_isdst) * (int32_t)3600;  // convert to UTC (DCF timezone is UTC+1 or UTC+2 with DST)
+    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp (subtracts one hour if tm_isdst=3600)
+    utcTime = dcfTime - (int32_t)ONE_HOUR;   // convert to UTC (DCF timezone is UTC+1)
 
     delta   = (int32_t)(sysTime - utcTime);           // time difference between the system time and DCF77 time in seconds
     deltaMs = delta * 1000 + ms;                      // above time difference in milliseconds
@@ -859,9 +859,9 @@ void syncToDcf (void) {
       set_system_time (utcTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
       sei ();
       Timer1.start ();
-      G.dstActive       = Dcf.currentTm.tm_isdst; // apply the new daylight saving time status
-      G.lastDcfSyncTime = utcTime;                // remember last sync time
-      G.dcfSyncActive   = false;                  // pause DCF77 reception
+      G.dstActive       = Dcf.currentTm.tm_isdst > 0 ? true : false;  // apply the new daylight saving time status
+      G.lastDcfSyncTime = utcTime;    // remember last sync time
+      G.dcfSyncActive   = false;      // pause DCF77 reception
 
       // calibrate timer1 to compensate for crystal drift
       if (abs (delta) < 60 && timeSinceLastSync > 1800 && !G.manuallyAdjusted && !coldStart) {
@@ -1657,7 +1657,7 @@ void settingsMenu (void) {
         else if (vIdx == 1) {
           Nixie.setDigits (valueDigits, 8);
           cli ();
-          Nixie.dec2bcd (Settings.nixieUptime / 3600, valueDigits, VALUE_DIGITS_SIZE, 6);
+          Nixie.dec2bcd (Settings.nixieUptime / ONE_HOUR, valueDigits, VALUE_DIGITS_SIZE, 6);
           sei ();
           valueDigits[7].value = 2;
           valueDigits[7].comma = true;
