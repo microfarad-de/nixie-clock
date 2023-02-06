@@ -68,7 +68,7 @@
 
 
 //#define SERIAL_DEBUG  // activate debug printing over RS232
-#define DEBUG_VALUES  // activate the debug values within the service menu
+//#define DEBUG_VALUES  // activate the debug values within the service menu
 
 
 #ifdef SERIAL_DEBUG
@@ -464,17 +464,11 @@ void setup() {
 void loop() {
   static bool cppWasEnabled = false, blankWasEnabled = false;
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
-  time_t locTime;
 
   // actions to be executed once every second
   if (G.timer1TickFlag) {
-    cli();
-    G.systemTime     = time (NULL);    // get the current time
-    sei();
-    locTime          = convertToLocalTime (G.systemTime);
-    G.localTm        = localtime (&locTime);
     G.secTickMsStamp = millis ();
-    updateDigits ();                      // update the Nixie display digits
+    updateDigits ();  // update the Nixie display digits
     G.timer1TickFlag = false;
   }
 
@@ -1000,6 +994,13 @@ void timerCalculate (void) {
  ***********************************/
 void updateDigits () {
   static int8_t lastMin = 0;
+  time_t locTime;
+
+  cli();
+  G.systemTime = time (NULL);  // get the current time
+  sei();
+  locTime   = convertToLocalTime (G.systemTime);
+  G.localTm = localtime (&locTime);
 
   // check whether current state requires time or date display
   G.timeDigits[0].value = dec2bcdLow  (G.localTm->tm_sec);
@@ -1223,8 +1224,8 @@ void reorderMenu (int8_t menuIdx) {
   sysTime = mktime (t); \
   sysTime = convertToUtcTime (sysTime); \
   set_system_time (sysTime); \
-  updateDigits (); \
   sei (); \
+  updateDigits (); \
   G.dcfSyncActive = Settings.dcfSyncEnabled; \
   G.manuallyAdjusted = true; \
 }
@@ -1974,12 +1975,16 @@ void settingsMenu (void) {
         cli ();
         Timer1.stop ();
         Timer1.restart ();
-        sei ();
         t = G.localTm;
+        val8 = t->tm_sec;
         t->tm_sec = 0;
         sysTime = mktime (t);
+        if (val8 >= 30) {
+          sysTime += 60;
+        }
         sysTime = convertToUtcTime (sysTime);
         set_system_time (sysTime);
+        sei ();
         updateDigits ();
         G.dcfSyncActive = Settings.dcfSyncEnabled;
         G.manuallyAdjusted = true;
