@@ -42,7 +42,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Version: 5.0.0
- * Date:    February 05, 2023
+ * Date:    February 06, 2023
  */
 #define VERSION_MAJOR 5  // Major version
 #define VERSION_MINOR 0  // Minor version
@@ -68,7 +68,7 @@
 
 
 //#define SERIAL_DEBUG  // activate debug printing over RS232
-#define DEBUG_VALUES  // activate the debug values within the service menu
+//#define DEBUG_VALUES  // activate the debug values within the service menu
 
 
 #ifdef SERIAL_DEBUG
@@ -189,8 +189,8 @@ struct Settings_t {
   uint32_t timerPeriod;           // virtual period of Timer1/Timer2 (equivalent to 1 second)
   volatile uint32_t nixieUptime;  // stores the nixie tube uptime in seconds
   uint8_t  reserved[2];           // reserved for future use
-  int8_t   utcTimeZone;           // time difference relative to UTC
-  int8_t   dstEnabled;            // daylight saving time (DST) is enabled
+  int8_t   timeZone;              // time difference between UTC and local time
+  int8_t   dstEnabled;            // daylight saving time (0 = disabled, 1 = enabled, 2 = automatic)
   bool     dcfSyncEnabled;        // enables DCF77 synchronization feature
   bool     dcfSignalIndicator;    // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
   uint8_t  dcfSyncHour;           // hour of day when DCF77 sync shall start
@@ -228,7 +228,7 @@ const struct SettingsLut_t {
   int8_t defaultVal; // default value
 } SettingsLut[SETTINGS_LUT_SIZE] =
 {
-  { (int8_t *)&Settings.utcTimeZone,            1, 1,   -11,   14,     1 }, // time zone relative to UTC
+  { (int8_t *)&Settings.timeZone,               1, 1,   -11,   14,     1 }, // time difference between UTC and local time
   { (int8_t *)&Settings.dstEnabled,             1, 2,     0,    2,     2 }, // daylight saving time (0 = disabled, 1 = enabled, 2 = automatic)
   { (int8_t *)&Settings.weekStartDay,           1, 3,     1,    7,     1 }, // start day of the week (1 = Monday, 7 = Sunday)
   { (int8_t *)&Settings.clockDriftCorrect,      1, 4,   -99,   99,     0 }, // manual clock drift correction
@@ -257,20 +257,20 @@ struct G_t {
   uint32_t timer1PeriodFL;                     // Timer1 low fractional part
   uint32_t timer1PeriodLow;                    // Timer1 period rounded down to the multiple of timer1Step (µs)
   uint32_t timer1PeriodHigh;                   // Timer1 period rounded up to the multiple of timer1Step (µs)
-  uint32_t timer2Step;                         // minimum adjustment step for Timers in µs
+  uint32_t timer2Step;                         // minimum adjustment step for Timer2 in µs
   uint32_t timer2PeriodFH;                     // Timer2 high fractional part
   uint32_t timer2PeriodFL;                     // Timer2 low fractional part
   uint32_t timer2PeriodLow;                    // Timer2 period rounded down to the multiple of timer2Step (µs)
   uint32_t timer2PeriodHigh;                   // Timer2 period rounded up to the multiple of timer2Step (µs)
   volatile bool timer1UpdateFlag = true;       // set to true if Timer1 parameters have been updated
   volatile bool timer2UpdateFlag = true;       // set to true if Timer2 parameters have been updated
-  uint32_t dcfSyncInterval    = 0;             // DCF77 synchronization interval in minutes
-  time_t   lastDcfSyncTime    = 0;             // stores the time of last successful DCF77 synchronizaiton
-  tm       lastDcfSyncTm      = { 0 };         // time of the last successful DCF77 synchronization as a tm structure
-  bool     manuallyAdjusted   = true;          // prevent crystal drift compensation if clock was manually adjusted
-  bool     dcfSyncActive      = true;          // enable/disable DCF77 synchronization
-  bool     cppEffectEnabled   = false;         // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning)
-  uint32_t secTickMsStamp     = 0;             // millis() at the last second tick, used for accurate crystal drift compensation
+  uint32_t dcfSyncInterval       = 0;          // DCF77 synchronization interval in minutes
+  time_t   lastDcfSyncTime       = 0;          // stores the time of last successful DCF77 synchronizaiton
+  tm       lastDcfSyncTm         = { 0 };      // local time of the last successful DCF77 synchronization as a tm structure
+  bool     manuallyAdjusted      = true;       // prevent crystal drift compensation if clock was manually adjusted
+  bool     dcfSyncActive         = true;       // enable/disable DCF77 synchronization
+  bool     cppEffectEnabled      = false;      // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning)
+  uint32_t secTickMsStamp        = 0;          // millis() at the last second tick, used for accurate crystal drift compensation
   volatile bool    timer1TickFlag     = false; // flag is set every second by the Timer1 ISR
   volatile uint8_t timer2SecCounter   = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1s ticks
   volatile uint8_t timer2TenthCounter = 0;     // increments every time Timer2 ISR is called, used for converting 25ms into 1/10s ticks
@@ -312,7 +312,7 @@ void timer2ISR (void);
 void timerCallback (bool);
 time_t convertToLocalTime (time_t time);
 time_t convertToUtcTime (time_t time);
-void syncToDCF (void);
+void syncToDcf (void);
 void timerCalibrate (time_t, int32_t);
 void timerCalculate (void);
 void updateDigits (void);
@@ -592,7 +592,7 @@ void loop() {
 
   Nixie.refresh ();
 
-  syncToDCF ();             // synchronize with DCF77 time
+  syncToDcf ();             // synchronize with DCF77 time
 
   Nixie.refresh ();
 
@@ -794,7 +794,7 @@ inline int8_t getDstOffset (void) {
  ***********************************/
 time_t convertToLocalTime (time_t time) {
   int8_t dst = getDstOffset ();
-  return time + (Settings.utcTimeZone + dst) * (int32_t)3600;
+  return time + (Settings.timeZone + dst) * (int32_t)3600;
 }
 /*********/
 
@@ -804,7 +804,7 @@ time_t convertToLocalTime (time_t time) {
  ***********************************/
 time_t convertToUtcTime (time_t time) {
   int8_t dst = getDstOffset ();
-  return time - (Settings.utcTimeZone + dst) * (int32_t)3600;
+  return time - (Settings.timeZone + dst) * (int32_t)3600;
 }
 /*********/
 
@@ -813,7 +813,7 @@ time_t convertToUtcTime (time_t time) {
  * Synchronize the system clock
  * with the DCF77 time
  ***********************************/
-void syncToDCF (void) {
+void syncToDcf (void) {
   static bool coldStart = true;  // flag to indicate initial sync after power-up
   static bool dcfWasActive = true;
   static int32_t lastDelta = 0;
@@ -874,7 +874,7 @@ void syncToDCF (void) {
         timerCalibrate (timeSinceLastSync, deltaMs);
       }
 
-      PRINTLN ("[syncToDCF] updated time");
+      PRINTLN ("[syncToDcf] updated time");
 
 #ifdef SERIAL_DEBUG
       G.printTickCount   = 0;      // reset RS232 print period
@@ -891,25 +891,25 @@ void syncToDCF (void) {
   // debug printing
   // timestamp validation failed
   if (rv < 31) {
-    PRINT   ("[syncToDCF] Dcf.getTime=");
+    PRINT   ("[syncToDcf] Dcf.getTime=");
     PRINTLN (rv, DEC);
     if (rv == 0) {
-      PRINT   ("[syncToDCF] delta=");
+      PRINT   ("[syncToDcf] delta=");
       PRINTLN (delta, DEC);
     }
-    PRINT ("[syncToDCF] ");
+    PRINT ("[syncToDcf] ");
     PRINT   (asctime (&Dcf.currentTm));
     PRINTLN (" *");
   }
   // sync bit has been missed, bits buffer overflow
   else if (rv == 31) {
-    PRINT   ("[syncToDCF] many bits=");
+    PRINT   ("[syncToDcf] many bits=");
     PRINTLN (Dcf.lastIdx, DEC);
     Dcf.lastIdx = 0;
   }
   // missed bits or false sync bit detected
   else if (rv == 32) {
-    PRINT   ("[syncToDCF] few bits=");
+    PRINT   ("[syncToDcf] few bits=");
     PRINTLN (Dcf.lastIdx, DEC);
     Dcf.lastIdx = 0;
   }
