@@ -268,7 +268,7 @@ struct G_t {
   time_t   lastDcfSyncTime       = 0;          // stores the time of last successful DCF77 synchronizaiton
   tm       lastDcfSyncTm         = { 0 };      // local time of the last successful DCF77 synchronization as a tm structure
   bool     manuallyAdjusted      = true;       // prevent crystal drift compensation if clock was manually adjusted
-  bool     dcfSyncActive         = true;       // enable/disable DCF77 synchronization
+  bool     dcfSyncActive         = false;      // enable/disable DCF77 synchronization
   bool     cppEffectEnabled      = false;      // Nixie digit cathod poison prevention effect is triggered every x seconds (avoids cathode poisoning)
   uint32_t secTickMsStamp        = 0;          // millis() at the last second tick, used for accurate crystal drift compensation
   volatile bool    timer1TickFlag     = false; // flag is set every second by the Timer1 ISR
@@ -450,6 +450,9 @@ void setup() {
   Alarm.initialize (&Settings.alarm);
   CdTimer.initialize (timerCallback);
   Stopwatch.initialize (timerCallback);
+
+  // activate DCF synchronization if enabled
+  G.dcfSyncActive = Settings.dcfSyncEnabled;
 
   // enable the watchdog
   wdt_enable (WDT_TIMEOUT);
@@ -1147,8 +1150,8 @@ void powerSave (void) {
         sei ();
         set_sleep_mode (SLEEP_MODE_PWR_DOWN);
         mode = DEEP_SLEEP;
-        G.dcfSyncActive = Settings.dcfSyncEnabled;  // time must be synced to DCF77 upon power re-connect
-        G.manuallyAdjusted = true;                  // inaccurate time-keeping should never be used for timer calibration
+        if (!G.dcfSyncActive) G.dcfSyncActive = Settings.dcfSyncEnabled;  // time must be synced to DCF77 upon power re-connect
+        G.manuallyAdjusted = true;                   // inaccurate time-keeping should never be used for timer calibration
       }
     }
     // Deep Sleep:
@@ -1228,7 +1231,6 @@ void reorderMenu (int8_t menuIdx) {
   set_system_time (sysTime); \
   sei (); \
   updateDigits (); \
-  G.dcfSyncActive = Settings.dcfSyncEnabled; \
   G.manuallyAdjusted = true; \
 }
 /*********/
@@ -1988,7 +1990,6 @@ void settingsMenu (void) {
         set_system_time (sysTime);
         sei ();
         updateDigits ();
-        G.dcfSyncActive = Settings.dcfSyncEnabled;
         G.manuallyAdjusted = true;
       }
       // button 1 - falling edge --> start Timer1
