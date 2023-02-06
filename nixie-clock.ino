@@ -1221,6 +1221,8 @@ void reorderMenu (int8_t menuIdx) {
   cli (); \
   t = G.localTm; \
   EXPR; \
+  valU8 = month_length (t->tm_year, t->tm_mon + 1); \
+  if (t->tm_mday > valU8 ) t->tm_mday = valU8; \
   sysTime = mktime (t); \
   sysTime = convertToUtcTime (sysTime); \
   set_system_time (sysTime); \
@@ -2081,7 +2083,7 @@ void settingsMenu (void) {
       if (Button[1].pressed) {
         Nixie.resetBlinking();
         if (ts - scrollTs >= scrollDelay) {
-          SET_TIME_DATE( t->tm_year++; if (t->tm_year > 199) t->tm_year = 199; )
+          SET_TIME_DATE( t->tm_year++; if (t->tm_year > 230) t->tm_year = 230; )
           scrollTs = ts;
         }
       }
