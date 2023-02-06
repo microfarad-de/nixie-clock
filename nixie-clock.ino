@@ -68,7 +68,7 @@
 
 
 //#define SERIAL_DEBUG  // activate debug printing over RS232
-//#define DEBUG_VALUES  // activate the debug values within the service menu
+#define DEBUG_VALUES  // activate the debug values within the service menu
 
 
 #ifdef SERIAL_DEBUG
@@ -1479,7 +1479,7 @@ void settingsMenu (void) {
       menuIdx = 0;
       nextState = G.menuOrder[menuIdx]; // switch to this state after short-pressing button 0
                                         // use dynamic menu ordering
-      returnState = SET_HOUR_E;         // switch to this state after long-pressing button 0
+      returnState = SET_SEC_E;         // switch to this state after long-pressing button 0
       G.menuState = SHOW_TIME;
     case SHOW_TIME:
       break;
@@ -1492,7 +1492,7 @@ void settingsMenu (void) {
       for (i = 0; i < 6; i++) G.dateDigits[i].blink = false;
       //menuIdx = 0;
       nextState   = SHOW_TIME_E;
-      returnState = SET_DAY_E;
+      returnState = SET_YEAR_E;
       G.menuState = SHOW_DATE;
     case SHOW_DATE:
       // do nothing
@@ -1664,8 +1664,10 @@ void settingsMenu (void) {
         }
         // Show the last DCF sync date
         else if (vIdx == 2) {
-          locTime = convertToLocalTime(G.lastDcfSyncTime);
-          localtime_r(&locTime, &G.lastDcfSyncTm);
+          if (G.lastDcfSyncTime != 0) {
+            locTime = convertToLocalTime(G.lastDcfSyncTime);
+            localtime_r(&locTime, &G.lastDcfSyncTm);
+          }
           Nixie.setDigits (valueDigits, 8);
           valueDigits[7].value = 3;
           valueDigits[7].comma = true;
@@ -1681,8 +1683,10 @@ void settingsMenu (void) {
         }
         // Show the last DCF sync time
         else if (vIdx == 3) {
-          locTime = convertToLocalTime(G.lastDcfSyncTime);
-          localtime_r(&locTime, &G.lastDcfSyncTm);
+          if (G.lastDcfSyncTime != 0) {
+            locTime = convertToLocalTime(G.lastDcfSyncTime);
+            localtime_r(&locTime, &G.lastDcfSyncTm);
+          }
           Nixie.setDigits (valueDigits, 8);
           valueDigits[7].value = 4;
           valueDigits[7].comma = true;
@@ -1927,7 +1931,7 @@ void settingsMenu (void) {
       G.timeDigits[3].blink = true;
       G.timeDigits[4].blink = false;
       G.timeDigits[5].blink = false;
-      nextState   = SET_SEC_E;
+      nextState   = SET_YEAR_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_MIN;
     case SET_MIN:
@@ -1958,7 +1962,7 @@ void settingsMenu (void) {
       G.timeDigits[3].blink = false;
       G.timeDigits[4].blink = false;
       G.timeDigits[5].blink = false;
-      nextState   = SET_DAY_E;
+      nextState   = SET_HOUR_E;
       returnState = SHOW_TIME_E;
       G.menuState = SET_SEC;
     case SET_SEC:
@@ -1974,6 +1978,7 @@ void settingsMenu (void) {
         t = G.localTm;
         t->tm_sec = 0;
         sysTime = mktime (t);
+        sysTime = convertToUtcTime (sysTime);
         set_system_time (sysTime);
         updateDigits ();
         G.dcfSyncActive = Settings.dcfSyncEnabled;
@@ -2001,7 +2006,7 @@ void settingsMenu (void) {
       G.dateDigits[5].blink = true;
       G.dateDigits[2].comma = true;
       G.dateDigits[4].comma = true;
-      nextState   = SET_MONTH_E;
+      nextState   = SET_WEEK_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_DAY;
     case SET_DAY:
@@ -2032,7 +2037,7 @@ void settingsMenu (void) {
       G.dateDigits[3].blink = true;
       G.dateDigits[4].blink = false;
       G.dateDigits[5].blink = false;
-      nextState   = SET_YEAR_E;
+      nextState   = SET_DAY_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_MONTH;
     case SET_MONTH:
@@ -2063,7 +2068,7 @@ void settingsMenu (void) {
       G.dateDigits[3].blink = false;
       G.dateDigits[4].blink = false;
       G.dateDigits[5].blink = false;
-      nextState   = SET_WEEK_E;
+      nextState   = SET_MONTH_E;
       returnState = SHOW_DATE_E;
       G.menuState = SET_YEAR;
     case SET_YEAR:
@@ -2098,7 +2103,7 @@ void settingsMenu (void) {
       valueDigits[3].blank = true;
       valueDigits[4].value = weekDay();
       valueDigits[5].blank = true;
-      nextState   = SET_HOUR_E;
+      nextState   = SET_SEC_E;
       returnState = SHOW_WEEK_E;
       G.menuState = SET_WEEK;
     case SET_WEEK:
