@@ -1272,7 +1272,7 @@ uint8_t calendarWeekValidate (void) {
 
 
 
-#define SCROLL_LUT_SIZE   18    // digit scrolling lookup dable size
+#define SCROLL_LUT_SIZE   18    // digit scrolling lookup table size
 #define SCROLL_INTERVAL   1000  // digit scrolling interval
 #define VALUE_DIGITS_SIZE 14    // size of the general purpose digit buffer
 
@@ -1670,8 +1670,8 @@ void settingsMenu (void) {
         // Show the last DCF sync date
         else if (vIdx == 2) {
           if (G.lastDcfSyncTime != 0) {
-          locTime = convertToLocalTime(G.lastDcfSyncTime);
-          localtime_r(&locTime, &G.lastDcfSyncTm);
+            locTime = convertToLocalTime(G.lastDcfSyncTime);
+            localtime_r(&locTime, &G.lastDcfSyncTm);
           }
           Nixie.setDigits (valueDigits, 8);
           valueDigits[7].value = 3;
@@ -1689,8 +1689,8 @@ void settingsMenu (void) {
         // Show the last DCF sync time
         else if (vIdx == 3) {
           if (G.lastDcfSyncTime != 0) {
-          locTime = convertToLocalTime(G.lastDcfSyncTime);
-          localtime_r(&locTime, &G.lastDcfSyncTm);
+            locTime = convertToLocalTime(G.lastDcfSyncTime);
+            localtime_r(&locTime, &G.lastDcfSyncTm);
           }
           Nixie.setDigits (valueDigits, 8);
           valueDigits[7].value = 4;
