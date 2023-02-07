@@ -42,7 +42,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Version: 5.0.0
- * Date:    February 06, 2023
+ * Date:    February 07, 2023
  */
 #define VERSION_MAJOR 5  // Major version
 #define VERSION_MINOR 0  // Minor version
@@ -786,8 +786,6 @@ inline int8_t getDstOffset (void) {
 
 /***********************************
  * Convert UTC time to local time
- * The received DCF time corresponds to UTC+1 with DST enabled.
- * Thus, we need to subtract 1 hour as well as the DST offset in order to get UTC.
  ***********************************/
 time_t convertToLocalTime (time_t time) {
   int8_t dst = getDstOffset ();
