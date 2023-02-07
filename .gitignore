@@ -3,4 +3,5 @@
 build-*
 private
 *-full*
+nixie-clock*
 
