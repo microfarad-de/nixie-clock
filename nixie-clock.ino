@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Version: 5.0.0
- * Date:    February 07, 2023
+ * Version: 5.1.0
+ * Date:    February 09, 2023
  */
 #define VERSION_MAJOR 5  // Major version
-#define VERSION_MINOR 0  // Minor version
+#define VERSION_MINOR 1  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -811,7 +811,7 @@ time_t convertToUtcTime (time_t time) {
 void syncToDcf (void) {
   static bool coldStart = true;  // flag to indicate initial sync after power-up
   static bool dcfWasActive = true;
-  static int32_t lastDelta = 0;
+  static int32_t lastDeltaMs = 0;
   uint8_t rv;
   int32_t delta, deltaMs, ms;
   time_t timeSinceLastSync;
@@ -848,10 +848,10 @@ void syncToDcf (void) {
     deltaMs = delta * 1000 + ms;                      // above time difference in milliseconds
     timeSinceLastSync = dcfTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
 
-    // if no big time deviation was detected or
-    // two consecutive DCF77 timestamps produce a similar time deviation
+    // if no large time deviation has occurred or
+    // if two consecutive DCF77 timestamps produce a similar time deviation
     // then update the system time
-    if (abs (delta) < 60 || abs (delta - lastDelta) < 60) {
+    if (abs(deltaMs) < 500 || abs (deltaMs - lastDeltaMs) < 500) {
 
       Timer1.stop ();
       Timer1.restart ();              // reset the beginning of a second
@@ -878,7 +878,7 @@ void syncToDcf (void) {
       coldStart          = false;  // clear the initial startup flag
     }
 
-    lastDelta = delta; // needed for validating consecutive DCF77 measurements against each other
+    lastDeltaMs = deltaMs; // needed for validating dthe ecoded DCF77 timestamp
   }
 
 #ifdef SERIAL_DEBUG
