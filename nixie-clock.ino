@@ -554,7 +554,7 @@ void loop() {
   static bool dcfSyncWasActive = false;
   if (G.dcfSyncActive) {
     // DCF77 sync status indicator
-    Nixie.comma[1] = Dcf.edge || !Settings.dcfSignalIndicator;
+    Nixie.comma[1] = Dcf.level || !Settings.dcfSignalIndicator;
     dcfSyncWasActive = true;
 #ifdef DCF_DEBUG_VALUES
     static bool debugValuesWereEnabled = false;
@@ -815,9 +815,9 @@ void syncToDcf (void) {
   uint8_t rv;
   int32_t delta, deltaMs, ms;
   time_t timeSinceLastSync;
-  time_t sysTime, dcfTime, utcTime;
+  time_t sysTime, dcfTime;
 
-  // enable DCF77 pin interrupt
+  // enable DCF77 reception
   if (G.dcfSyncActive) {
     if (!dcfWasActive) {
       Dcf.resumeReception ();
@@ -842,12 +842,11 @@ void syncToDcf (void) {
   if (G.dcfSyncActive && rv == 0) {
     ms      = millis () - G.secTickMsStamp;  // milliseconds elapsed since the last full second
     sysTime = G.systemTime;                  // get the current system time
-    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp (subtracts one hour if tm_isdst=3600)
-    utcTime = dcfTime - (int32_t)ONE_HOUR;   // convert to UTC (DCF timezone is UTC+1)
+    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp (coverted to UTC according to the value of tm_isdst)
 
-    delta   = (int32_t)(sysTime - utcTime);           // time difference between the system time and DCF77 time in seconds
+    delta   = (int32_t)(sysTime - dcfTime);           // time difference between the system time and DCF77 time in seconds
     deltaMs = delta * 1000 + ms;                      // above time difference in milliseconds
-    timeSinceLastSync = utcTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
+    timeSinceLastSync = dcfTime - G.lastDcfSyncTime;  // time elapsed since the last successful DCF77 synchronization in seconds
 
     // if no big time deviation was detected or
     // two consecutive DCF77 timestamps produce a similar time deviation
@@ -857,11 +856,11 @@ void syncToDcf (void) {
       Timer1.stop ();
       Timer1.restart ();              // reset the beginning of a second
       cli ();
-      set_system_time (utcTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
+      set_system_time (dcfTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
       sei ();
       Timer1.start ();
-      G.dstActive       = Dcf.currentTm.tm_isdst > 0 ? true : false;  // apply the new daylight saving time status
-      G.lastDcfSyncTime = utcTime;    // remember last sync time
+      G.dstActive       = Dcf.currentTm.tm_isdst > ONE_HOUR ? true : false;  // apply the new daylight saving time status
+      G.lastDcfSyncTime = dcfTime;    // remember last sync time
       G.dcfSyncActive   = false;      // pause DCF77 reception
 
       // calibrate timer1 to compensate for crystal drift
