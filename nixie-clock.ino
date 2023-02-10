@@ -42,7 +42,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * Version: 5.1.0
- * Date:    February 09, 2023
+ * Date:    February 11, 2023
  */
 #define VERSION_MAJOR 5  // Major version
 #define VERSION_MINOR 1  // Minor version
@@ -85,11 +85,11 @@
 #endif
 
 
-// if the folllowing value is changed, the Nixie tube uptime will be reset to NIXIE_UPTIME_RESET_VALUE
+// reset the Nixie tube uptime to NIXIE_UPTIME_RESET_VALUE
 //#define NIXIE_UPTIME_RESET
 
 #ifdef NIXIE_UPTIME_RESET
-  // reset the Nixie tube uptime to this value in seconds upon booting for the very first time
+  // reset the Nixie tube uptime to this value in seconds upon booting
   #define NIXIE_UPTIME_RESET_VALUE  ((uint32_t)0*ONE_HOUR)
 #endif
 
@@ -298,8 +298,6 @@ ButtonClass Button[NUM_APINS]; // array of push button objects
 AlarmClass Alarm;              // alarm clock object
 CdTimerClass CdTimer;          // countdown timer object
 StopwatchClass Stopwatch;      // stopwatch object
-
-
 
 
 
@@ -674,8 +672,6 @@ void timer1ISR (void) {
     }
   }
 
-
-
   G.timer1TickFlag = true;
 
 #ifdef SERIAL_DEBUG
@@ -683,6 +679,7 @@ void timer1ISR (void) {
 #endif
 }
 /*********/
+
 
 
 /***********************************
@@ -739,6 +736,7 @@ void timer2ISR (void) {
 /*********/
 
 
+
 /***********************************
  * Watchdog expiry ISR
  * takes over system ticking during Deep Sleep
@@ -747,6 +745,7 @@ ISR (WDT_vect)  {
   system_tick ();
 }
 /*********/
+
 
 
 /***********************************
@@ -768,6 +767,7 @@ void timerCallback (bool start) {
 /*********/
 
 
+
 /***********************************
  * Get the daylight saving time offset
  ***********************************/
@@ -784,6 +784,7 @@ inline int8_t getDstOffset (void) {
 /*********/
 
 
+
 /***********************************
  * Convert UTC time to local time
  ***********************************/
@@ -794,6 +795,7 @@ time_t convertToLocalTime (time_t time) {
 /*********/
 
 
+
 /***********************************
  * Convert local time back to UTC time
  ***********************************/
@@ -802,6 +804,7 @@ time_t convertToUtcTime (time_t time) {
   return time - (Settings.timeZone + dst) * (int32_t)ONE_HOUR;
 }
 /*********/
+
 
 
 /***********************************
@@ -842,7 +845,7 @@ void syncToDcf (void) {
   if (G.dcfSyncActive && rv == 0) {
     ms      = millis () - G.secTickMsStamp;  // milliseconds elapsed since the last full second
     sysTime = G.systemTime;                  // get the current system time
-    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp (coverted to UTC according to the value of tm_isdst)
+    dcfTime = mktime (&Dcf.currentTm);       // get the DCF77 timestamp (converted to UTC according to the value of tm_isdst)
 
     delta   = (int32_t)(sysTime - dcfTime);           // time difference between the system time and DCF77 time in seconds
     deltaMs = delta * 1000 + ms;                      // above time difference in milliseconds
@@ -1034,8 +1037,6 @@ void updateDigits () {
 
 
 
-
-
 /***********************************
  * Read ADC channels
  ***********************************/
@@ -1093,6 +1094,7 @@ void adcRead (void) {
 /*********/
 
 
+
 /***********************************
  * Enter power save mode
  ***********************************/
@@ -1117,7 +1119,7 @@ void powerSave (void) {
   set_sleep_mode (SLEEP_MODE_IDLE); // configure lowest sleep mode that keeps clk_IO for Timer 1
 
   // stay in this loop until external power is re-connected
-  // DCF_PIN is pulled-up when external power is connected
+  // DCF_PIN is pulled up when external power is connected
   while (digitalRead (DCF_PIN) == LOW) {
 
     // Light Sleep:
@@ -1143,12 +1145,12 @@ void powerSave (void) {
         power_adc_disable ();
         cli ();
         WDTCSR |= _BV(WDCE) | _BV(WDE);
-        WDTCSR = _BV(WDIE) | _BV(WDP2) | _BV(WDP1);  // Enable watchdog interrupt, set to 1s (see Datasheet Section 15.9.2)
+        WDTCSR = _BV(WDIE) | _BV(WDP2) | _BV(WDP1);  // Enable watchdog interrupt, set to 1s (see datasheet Section 15.9.2)
         sei ();
         set_sleep_mode (SLEEP_MODE_PWR_DOWN);
         mode = DEEP_SLEEP;
         if (!G.dcfSyncActive) G.dcfSyncActive = Settings.dcfSyncEnabled;  // time must be synced to DCF77 upon power re-connect
-        G.manuallyAdjusted = true;                   // inaccurate time-keeping should never be used for timer calibration
+        G.manuallyAdjusted = true;  // inaccurate time-keeping should never be used for timer calibration
       }
     }
     // Deep Sleep:
@@ -1184,7 +1186,6 @@ void powerSave (void) {
 
 
 
-
 /***********************************
  * Performs dynamic reordering of menu items
  * the last used feature shall appear first in the
@@ -1213,6 +1214,7 @@ void reorderMenu (int8_t menuIdx) {
 /*********/
 
 
+
 /***********************************
  * Code snippet for setting time/date value
  * called repeatedly from within settingsMenu()
@@ -1233,6 +1235,7 @@ void reorderMenu (int8_t menuIdx) {
 /*********/
 
 
+
 /***********************************
  * Calculate the week day
  ***********************************/
@@ -1242,6 +1245,7 @@ uint8_t weekDay (void) {
 /*********/
 
 
+
 /***********************************
  * Calculate the current calendar week
  ***********************************/
@@ -1249,6 +1253,8 @@ int8_t calendarWeek (void) {
   return (int8_t)week_of_year (G.localTm, (Settings.weekStartDay == 7 ? 0 : Settings.weekStartDay)) + Settings.calWeekAdjust + 1;
 }
 /*********/
+
+
 
 /***********************************
  * Validate the calendar week adjustment
@@ -1337,8 +1343,6 @@ void settingsMenu (void) {
       scrollDelay = scrollLut[0];
     }
   }
-
-
 
   Nixie.refresh ();  // refresh the Nixie tube display
 
@@ -1434,7 +1438,6 @@ void settingsMenu (void) {
       }
     }
   }
-
 
   Nixie.refresh ();  // refresh the Nixie tube display
 
@@ -2145,6 +2148,3 @@ void settingsMenu (void) {
 
 }
 /*********/
-
-
-
