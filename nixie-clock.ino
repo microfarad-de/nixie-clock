@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Version: 5.1.0
- * Date:    February 11, 2023
+ * Version: 5.1.1
+ * Date:    March 26, 2023
  */
 #define VERSION_MAJOR 5  // Major version
 #define VERSION_MINOR 1  // Minor version
-#define VERSION_MAINT 0  // Maintenance version
+#define VERSION_MAINT 1  // Maintenance version
 
 
 
@@ -862,7 +862,7 @@ void syncToDcf (void) {
       set_system_time (dcfTime - 1);  // apply the new system time, subtract 1s to compensate for initial tick
       sei ();
       Timer1.start ();
-      G.dstActive       = Dcf.currentTm.tm_isdst > ONE_HOUR ? true : false;  // apply the new daylight saving time status
+      G.dstActive       = (bool)Dcf.dcfTime.cest;  // apply the new daylight saving time status
       G.lastDcfSyncTime = dcfTime;    // remember last sync time
       G.dcfSyncActive   = false;      // pause DCF77 reception
 
