@@ -26,7 +26,7 @@
  *   http://www.microfarad.de
  *   http://www.github.com/microfarad-de
  *
- * Copyright (C) 2021 Karim Hraibi (khraibi at gmail.com)
+ * Copyright (C) 2026 Karim Hraibi (khraibi at gmail.com)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,12 +41,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Version: 5.1.1
- * Date:    March 26, 2023
+ * Version: 5.2.0
+ * Date:    March 29, 2026
  */
 #define VERSION_MAJOR 5  // Major version
-#define VERSION_MINOR 1  // Minor version
-#define VERSION_MAINT 1  // Maintenance version
+#define VERSION_MINOR 2  // Minor version
+#define VERSION_MAINT 0  // Maintenance version
 
 
 
@@ -142,7 +142,9 @@
 #define EEPROM_SETTINGS_ADDR   0             // EEPROM address of the settngs structure
 #define EEPROM_BRIGHTNESS_ADDR (EEPROM_SETTINGS_ADDR + sizeof (Settings))  // EEPROM address of the display brightness lookup table
 #define MENU_ORDER_LIST_SIZE   3             // size of the dynamic menu ordering list
-#define SETTINGS_LUT_SIZE      17            // size of the settings lookup table
+#define SETTINGS_LUT_SIZE      16            // size of the settings lookup table
+#define DCF_SYNC_HOUR          3             // DCF sync hour (0..23)
+#define DCF_SYNC_WDAY          0             // DCF sync day of week (0..6)
 #ifdef DEBUG_VALUES
   #define NUM_DEBUG_VALUES     3             // total number of debug values shown in the service menu
   #define NUM_DEBUG_DIGITS     7             // number of digits for the debug values shown in the service menu
@@ -193,7 +195,7 @@ struct Settings_t {
   int8_t   dstEnabled;            // daylight saving time (0 = disabled, 1 = enabled, 2 = automatic)
   bool     dcfSyncEnabled;        // enables DCF77 synchronization feature
   bool     dcfSignalIndicator;    // enables the live DCF77 signal strength indicator (blinking decimal point on digit 1)
-  uint8_t  dcfSyncHour;           // hour of day when DCF77 sync shall start
+  uint8_t  reserved00;            // reserved for future use
   uint8_t  blankScreenMode;       // turn-off display during a time interval in order to reduce tube wear (1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
   uint8_t  blankScreenStartHr;    // start hour for disabling the display
   uint8_t  blankScreenFinishHr;   // finish hour for disabling the display
@@ -234,7 +236,6 @@ const struct SettingsLut_t {
   { (int8_t *)&Settings.clockDriftCorrect,      1, 4,   -99,   99,     0 }, // manual clock drift correction
   { (int8_t *)&Settings.dcfSyncEnabled,         2, 1, false, true,  true }, // DCF sync
   { (int8_t *)&Settings.dcfSignalIndicator,     2, 2, false, true,  true }, //  - signal indicator
-  { (int8_t *)&Settings.dcfSyncHour,            2, 3,     0,   23,     3 }, //  - sync hour
   { (int8_t *)&Settings.blankScreenMode,        3, 1,     0,    4,     2 }, // screen blanking (0 = off, 1 = every day, 2 = on weekdays, 3 = on weekends, 4 = permanent)
   { (int8_t *)&Settings.blankScreenStartHr,     3, 2,     0,   23,     8 }, //  - start hour
   { (int8_t *)&Settings.blankScreenFinishHr,    3, 3,     0,   23,    17 }, //  - finish hour
@@ -478,8 +479,21 @@ void loop() {
   minute   = G.localTm->tm_min;
   wday     = G.localTm->tm_wday;
 
-  // start DCF77 reception at the specified hour
-  if (hour != lastHour && hour == Settings.dcfSyncHour && Settings.dcfSyncEnabled) G.dcfSyncActive = true;
+
+  // start DCF77 reception
+  if (Settings.dcfSyncEnabled && hour != lastHour && minute == 0) {
+    // Sync asap if time is inaccurate (manually adjusted)
+    if (G.manuallyAdjusted) {
+      G.dcfSyncActive = true;
+    }
+    // Weekly sync  - long sync interval is required for accurate timebase calibration
+    else {
+      if (hour == DCF_SYNC_HOUR && wday == DCF_SYNC_WDAY) {
+        G.dcfSyncActive = true;
+      }
+    }
+  }
+
 
   Nixie.refresh (); // refresh the Nixie tube display
                     // refresh method is called many times across the code to ensure smooth display operation
