@@ -41,11 +41,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Version: 5.2.0
- * Date:    March 29, 2026
+ * Version: 5.3.0
+ * Date:    April 03, 2026
  */
 #define VERSION_MAJOR 5  // Major version
-#define VERSION_MINOR 2  // Minor version
+#define VERSION_MINOR 3  // Minor version
 #define VERSION_MAINT 0  // Maintenance version
 
 
@@ -322,6 +322,8 @@ uint8_t weekDay (void);
 int8_t calendarWeek (void);
 uint8_t calendarWeekValidate (void);
 void settingsMenu (void);
+bool dstAutoAdjustEU (void);
+int8_t getDstOffset (void);
 
 
 
@@ -343,9 +345,9 @@ void setup() {
   Debug.initialize ();
 #endif
 
-  PRINTLN (" ");
-  PRINTLN ("+ + +  N I X I E  C L O C K  + + +");
-  PRINTLN (" ");
+  PRINTLN ("");
+  PRINTLN (F("+ + +  N I X I E  C L O C K  + + +"));
+  PRINTLN ("");
 
   // initialize the ADC
   Adc.initialize (ADC_PRESCALER_128, ADC_DEFAULT);
@@ -384,7 +386,7 @@ void setup() {
   // force a nixie tube uptime reset
   Settings.nixieUptime = NIXIE_UPTIME_RESET_VALUE;
   eepromWriteSettings ();
-  PRINTLN ("[setup] Nixie uptime reset");
+  PRINTLN (F("[setup] Nixie uptime reset"));
 #endif
 
   // reset all settings on first-time boot
@@ -402,19 +404,19 @@ void setup() {
     }
     Settings.settingsResetCode = SETTINGS_RESET_CODE;
     eepromWriteSettings ();
-    PRINTLN ("[setup] settings initialized");
+    PRINTLN (F("[setup] settings initialized"));
   }
 
-  PRINTLN ("[setup] other:");
+  PRINTLN (F("[setup] settings:"));
   // validate settings loaded from EEPROM
   for (i = 0; i < SETTINGS_LUT_SIZE; i++) {
-    PRINT("  ");
-    PRINT (SettingsLut[i].idDigit1, DEC); PRINT ("."); PRINT (SettingsLut[i].idDigit0, DEC); PRINT ("=");
+    PRINT(F("  "));
+    PRINT (SettingsLut[i].idDigit1, DEC); PRINT ('.'); PRINT (SettingsLut[i].idDigit0, DEC); PRINT ('=');
     PRINTLN (*SettingsLut[i].value, DEC);
     if (*SettingsLut[i].value < SettingsLut[i].minVal || *SettingsLut[i].value > SettingsLut[i].maxVal) *SettingsLut[i].value = SettingsLut[i].defaultVal;
   }
 
-  PRINT   ("[setup] timerPeriod=");
+  PRINT   (F("[setup] timerPeriod="));
   PRINTLN (Settings.timerPeriod, DEC);
 
   // initialize Timer1 to trigger timer1ISR once per second
@@ -464,7 +466,7 @@ void setup() {
  * Arduino main loop
  ***********************************/
 void loop() {
-  static bool cppWasEnabled = false, blankWasEnabled = false;
+  static bool cppWasEnabled = false, blankWasEnabled = false, dstAdjusted = false;
   static int8_t hour = 0, lastHour = 0, minute = 0, wday = 0;
 
   // actions to be executed once every second
@@ -497,6 +499,22 @@ void loop() {
 
   Nixie.refresh (); // refresh the Nixie tube display
                     // refresh method is called many times across the code to ensure smooth display operation
+
+  // auto adjust daylight saving time
+  if (hour != lastHour) {
+    if (!dstAdjusted) {
+      dstAdjusted = dstAutoAdjustEU();
+      PRINT (F("[loop] dstAdjusted="));
+      PRINTLN (dstAdjusted, DEC);
+    }
+    else if (hour == 0) {
+      dstAdjusted = false;
+      PRINT (F("[loop] dstAdjusted="));
+      PRINTLN (dstAdjusted, DEC);
+    }
+  }
+
+  Nixie.refresh ();
 
   // enable cathode poisoning prevention effect at a preset hour
   if (Settings.cathodePoisonPrevent == 1 && hour == Settings.cppStartHr && G.menuState != SET_HOUR) {
@@ -557,7 +575,6 @@ void loop() {
   if (hour != lastHour && hour == 1 && G.menuState != SET_HOUR) {
       Nixie.blank ();
       eepromWriteSettings ();
-      PRINTLN ("[loop] >EEPROM");
   }
 
   Nixie.refresh ();
@@ -623,10 +640,14 @@ void loop() {
 #ifdef SERIAL_DEBUG
   // print the current time
   if (G.printTickCount >= 15) {
-    PRINT ("[loop] ");
+    PRINT (F("[loop] "));
     PRINTLN (asctime (localtime (&G.systemTime)));
-    //PRINT ("[loop] nixieUptime=");
-    //PRINTLN (Settings.nixieUptime, DEC);
+    PRINT (F("[loop] timeZone="));
+    PRINT (Settings.timeZone, DEC);
+    PRINT (F(" dst="));
+    PRINTLN (getDstOffset(), DEC);
+    PRINT (F("[loop] nixieUptime="));
+    PRINTLN (Settings.nixieUptime, DEC);
     G.printTickCount = 0;
   }
 #endif
@@ -641,6 +662,7 @@ void loop() {
 void eepromWriteSettings (void) {
   eepromWrite (EEPROM_SETTINGS_ADDR, (uint8_t *)&Settings, sizeof (Settings));
   Brightness.eepromWrite ();
+  PRINTLN(F("[eepromWriteSettings] >EEPROM"));
 }
 /*********/
 
@@ -783,9 +805,105 @@ void timerCallback (bool start) {
 
 
 /***********************************
+ * Check if a year is a leap year
+ ***********************************/
+bool isLeapYear (uint16_t year) {
+  return ((year % 4 == 0) && (year % 100 != 0)) || (year % 400 == 0);
+}
+/*********/
+
+
+
+/***********************************
+ * Get last Sunday of a month (0..11)
+ ***********************************/
+uint8_t lastSundayOfMonth (uint16_t year, uint8_t month) {
+  static const uint8_t daysInMonth[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+
+  uint8_t lastDay = daysInMonth[month];
+  if (month == 1 && isLeapYear(year)) {   // February
+    lastDay = 29;
+  }
+
+  struct tm t = {};
+  t.tm_year = year - 1900;
+  t.tm_mon  = month;
+  t.tm_mday = lastDay;
+  t.tm_hour = 12;
+
+  mktime(&t);   // fills tm_wday
+
+  return lastDay - t.tm_wday;   // 0=Sun..6=Sat
+}
+/*********/
+
+
+
+/***********************************
+ * Check if DST is active in EU
+ ***********************************/
+bool dstAutoAdjustEU (void) {
+  if (Settings.dstEnabled != 2) {
+    PRINTLN( F("[dstAutoAdjustEU] disabled"));
+    return false;
+  }
+
+  if (Settings.timeZone < 0 || Settings.timeZone > 2) {
+    PRINTLN( F("[dstAutoAdjustEU] unsupported time zone"));
+    return false;
+  }
+
+  bool lastDstActive = G.dstActive;
+
+  uint16_t year  = G.localTm->tm_year + 1900;
+  uint8_t  month = G.localTm->tm_mon;     // 0..11
+  uint8_t  mday  = G.localTm->tm_mday;
+  uint8_t  hour  = G.localTm->tm_hour;
+
+  uint8_t marchSunday   = lastSundayOfMonth(year, 2);  // March
+  uint8_t octoberSunday = lastSundayOfMonth(year, 9);  // October
+
+  // Jan, Feb, Nov, Dec → standard time
+  if (month < 2 || month > 9) {
+    G.dstActive = false;
+  }
+
+  // Apr–Sep → DST
+  else if (month > 2 && month < 9) {
+    G.dstActive = true;
+  }
+
+  // March → DST starts at 02:00
+  else if (month == 2) {
+    if      (mday > marchSunday) G.dstActive = true;
+    else if (mday < marchSunday) G.dstActive = false;
+    else    G.dstActive = (hour >= 1 + Settings.timeZone);
+  }
+
+  // October → DST ends at 03:00
+  else if (month == 9) {
+    if      (mday < octoberSunday) G.dstActive = true;
+    else if (mday > octoberSunday) G.dstActive = false;
+    else    G.dstActive = (hour < 2 + Settings.timeZone);
+  }
+
+  else {
+    G.dstActive = false;
+  }
+
+  PRINT (F("[dstAutoAdjustEU] dstActive="));
+  PRINTLN (G.dstActive, DEC);
+
+  return lastDstActive != G.dstActive;
+}
+/*********/
+
+
+
+/***********************************
  * Get the daylight saving time offset
  ***********************************/
-inline int8_t getDstOffset (void) {
+int8_t getDstOffset (void) {
   // Automatic DST
   if (Settings.dstEnabled == 2) {
     return G.dstActive;
@@ -838,14 +956,14 @@ void syncToDcf (void) {
   if (G.dcfSyncActive) {
     if (!dcfWasActive) {
       Dcf.resumeReception ();
-      PRINTLN ("[syncToDcf] resume");
+      PRINTLN (F("[syncToDcf] resume"));
       dcfWasActive = true;
     }
   }
   else {
     if (dcfWasActive) {
       Dcf.pauseReception ();
-      PRINTLN ("[syncToDcf] pause");
+      PRINTLN (F("[syncToDcf] pause"));
       dcfWasActive = false;
     }
   }
@@ -885,7 +1003,7 @@ void syncToDcf (void) {
         timerCalibrate (timeSinceLastSync, deltaMs);
       }
 
-      PRINTLN ("[syncToDcf] updated time");
+      PRINTLN (F("[syncToDcf] updated time"));
 
 #ifdef SERIAL_DEBUG
       G.printTickCount   = 0;      // reset RS232 print period
@@ -902,25 +1020,25 @@ void syncToDcf (void) {
   // debug printing
   // timestamp validation failed
   if (rv < 31) {
-    PRINT   ("[syncToDcf] Dcf.getTime=");
+    PRINT   (F("[syncToDcf] Dcf.getTime="));
     PRINTLN (rv, DEC);
     if (rv == 0) {
-      PRINT   ("[syncToDcf] delta=");
+      PRINT   (F("[syncToDcf] delta="));
       PRINTLN (delta, DEC);
     }
-    PRINT ("[syncToDcf] ");
+    PRINT (F("[syncToDcf] "));
     PRINT   (asctime (&Dcf.currentTm));
     PRINTLN (" *");
   }
   // sync bit has been missed, bits buffer overflow
   else if (rv == 31) {
-    PRINT   ("[syncToDcf] many bits=");
+    PRINT   (F("[syncToDcf] many bits="));
     PRINTLN (Dcf.lastIdx, DEC);
     Dcf.lastIdx = 0;
   }
   // missed bits or false sync bit detected
   else if (rv == 32) {
-    PRINT   ("[syncToDcf] few bits=");
+    PRINT   (F("[syncToDcf] few bits="));
     PRINTLN (Dcf.lastIdx, DEC);
     Dcf.lastIdx = 0;
   }
@@ -949,13 +1067,13 @@ void timerCalibrate (time_t measDuration, int32_t timeOffsetMs) {
   Debug.set ( 2, drift);
 #endif
 
-  PRINT   ("[timerCalibrate] measDuration=");
+  PRINT   (F("[timerCalibrate] measDuration="));
   PRINTLN (measDuration, DEC);
-  PRINT   ("[timerCalibrate] timeOffsetMs=");
+  PRINT   (F("[timerCalibrate] timeOffsetMs="));
   PRINTLN (timeOffsetMs, DEC);
-  PRINT   ("[timerCalibrate] drift=");
+  PRINT   (F("[timerCalibrate] drift="));
   PRINTLN (drift, DEC);
-  PRINT   ("[timerCalibrate] timerPeriod=");
+  PRINT   (F("[timerCalibrate] timerPeriod="));
   PRINTLN (Settings.timerPeriod, DEC);
 }
 /*********/
@@ -1192,7 +1310,7 @@ void powerSave (void) {
 
 #ifdef SERIAL_DEBUG
   delay (500);
-  PRINT   ("[powerSave] mode=");
+  PRINT   (F("[powerSave] mode="));
   PRINTLN (mode, DEC);
 #endif
 }
@@ -1239,6 +1357,7 @@ void reorderMenu (int8_t menuIdx) {
   EXPR; \
   valU8 = month_length (t->tm_year, t->tm_mon + 1); \
   if (t->tm_mday > valU8 ) t->tm_mday = valU8; \
+  dstAutoAdjustEU(); \
   sysTime = mktime (t); \
   sysTime = convertToUtcTime (sysTime); \
   set_system_time (sysTime); \
